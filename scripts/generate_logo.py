@@ -287,17 +287,17 @@ for idx in firing:
 
     n_sparks = random.randint(2, 4)
     for _ in range(n_sparks):
-        ang    = random.uniform(-0.5, 0.5)
+        ang    = random.uniform(-0.45, 0.45)
         ca, sa = math.cos(ang), math.sin(ang)
         dx, dy = ox * ca - oy * sa, ox * sa + oy * ca
 
-        # Start just outside sphere surface
-        start_dist = SPHERE_R + random.uniform(4, 10)
-        length     = random.uniform(SPHERE_R * 0.20, SPHERE_R * 0.65)
-        sx1 = int(SCX + ox * start_dist)
-        sy1 = int(SCY + oy * start_dist)
-        sx2 = int(SCX + ox * start_dist + dx * length)
-        sy2 = int(SCY + oy * start_dist + dy * length)
+        length = random.uniform(SPHERE_R * 0.20, SPHERE_R * 0.60)
+        # Start from the actual node projection (px, py), not sphere-center offset
+        # — that old approach misplaces sparks for polar nodes (z near ±1)
+        sx1 = int(px + dx * 6)
+        sy1 = int(py + dy * 6)
+        sx2 = int(px + dx * length)
+        sy2 = int(py + dy * length)
 
         alpha = random.randint(100, 190)
         lw    = random.randint(1, 3)
