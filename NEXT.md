@@ -5,20 +5,21 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 2, Session 4
+## Current: Phase 1 — Milestone 2, Session 5
 
-**Goal:** Neural Sphere QPainter widget with idle pulse and thinking/orbiting-nodes animation states.
+**Goal:** Text I/O + Ollama integration — QLineEdit input, Orchestrator, QThread response flow.
 
 **Steps (in order):**
-1. Create `src/spaiOS/ui/neural_sphere.py` — `NeuralSphere(QWidget)` with `QPainter` `paintEvent`
-2. Idle state: `QTimer` 50ms, scale oscillates 0.95→1.05, opacity 0.6→0.8
-3. Thinking state: 8 satellite nodes at computed orbit positions, random flicker (`random.random() < 0.3`)
-4. Responding state: nodes converge to center with lerp ease-in
-5. Expose `set_state(state: str)` — trigger thinking via keyboard shortcut for testing
-6. Wire `NeuralSphere` into `overlay.py`, replacing the Session 3 placeholder label
-7. Verify all three animation states visually
+1. `src/spaiOS/ui/components.py` — `QLineEdit` ("Ask anything…") + `QPushButton` ("↵")
+2. Wire input row into `overlay.py` below the NeuralSphere
+3. `src/spaiOS/core/orchestrator.py` — `Orchestrator` class with `ask(prompt: str) -> str` calling `ollama.chat` with `llama3.2:3b`
+4. `QThread` subclass `AskThread` — emits `result(str)` and `error(str)` signals
+5. On Enter: emit signal → start `AskThread` → `sphere.set_state("thinking")`
+6. On `AskThread.result`: `sphere.set_state("responding")` → display text in `QTextEdit`
+7. On `Esc` while thinking: stop thread, return to idle
+8. Check Ollama is running before call; show friendly error in overlay if not
 
-**Session 5 continues with:** Text I/O + Ollama — QLineEdit, Orchestrator, QThread response flow
+**Session 6 continues with:** Polish pass — font, spacing, color tokens, opacity transitions
 
 **Notion task:** 34e7600e54c781f3a741d961b4482155 (Milestone 2 task)
 **Task doc:** `docs/tasks/2026-04-26-m2-the-overlay.md` (already exists)

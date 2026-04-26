@@ -1,5 +1,9 @@
 from PyQt6.QtCore import Qt, QEvent, pyqtSlot
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
+
+from spaiOS.ui.neural_sphere import NeuralSphere
+
+_STATE_CYCLE = ["idle", "thinking", "responding"]
 
 
 class Overlay(QMainWindow):
@@ -10,6 +14,7 @@ class Overlay(QMainWindow):
         super().__init__()
         self._build_window()
         self._center_on_screen()
+        self._state_index = 0
 
     def _build_window(self) -> None:
         self.setWindowFlags(
@@ -28,11 +33,8 @@ class Overlay(QMainWindow):
         layout = QVBoxLayout(container)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        # Placeholder — replaced in Session 4 with NeuralSphere widget
-        placeholder = QLabel("Neural Sphere — Session 4")
-        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        placeholder.setStyleSheet("color: rgba(160, 160, 200, 180); font-size: 14px;")
-        layout.addWidget(placeholder)
+        self._sphere = NeuralSphere()
+        layout.addWidget(self._sphere)
 
         self.setCentralWidget(container)
 
@@ -57,5 +59,8 @@ class Overlay(QMainWindow):
     def keyPressEvent(self, event: QEvent) -> None:  # type: ignore[override]
         if event.key() == Qt.Key.Key_Escape:
             self.hide()
+        elif event.key() == Qt.Key.Key_T:
+            self._state_index = (self._state_index + 1) % len(_STATE_CYCLE)
+            self._sphere.set_state(_STATE_CYCLE[self._state_index])
         else:
             super().keyPressEvent(event)
