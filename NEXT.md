@@ -5,24 +5,22 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 2, Session 5
+## Current: Phase 1 — Milestone 2, Session 6
 
-**Goal:** Text I/O + Ollama integration — QLineEdit input, Orchestrator, QThread response flow.
+**Goal:** Polish pass — font, spacing, color tokens, opacity transitions on overlay.
 
 **Steps (in order):**
-1. `src/spaiOS/ui/components.py` — `QLineEdit` ("Ask anything…") + `QPushButton` ("↵")
-2. Wire input row into `overlay.py` below the NeuralSphere
-3. `src/spaiOS/core/orchestrator.py` — `Orchestrator` class with `ask(prompt: str) -> str` calling `ollama.chat` with `llama3.2:3b`
-4. `QThread` subclass `AskThread` — emits `result(str)` and `error(str)` signals
-5. On Enter: emit signal → start `AskThread` → `sphere.set_state("thinking")`
-6. On `AskThread.result`: `sphere.set_state("responding")` → display text in `QTextEdit`
-7. On `Esc` while thinking: stop thread, return to idle
-8. Check Ollama is running before call; show friendly error in overlay if not
+1. Define a color/font token module (`src/spaiOS/ui/tokens.py`) — shared palette constants
+2. Apply consistent font (Inter or system sans-serif, size scale) across InputRow + ResponseView
+3. Smooth opacity fade-in when overlay shows (`QPropertyAnimation` on `windowOpacity`)
+4. Smooth idle→thinking→responding visual transitions (sphere glow color tween)
+5. Tighten layout spacing and padding — ensure 540px height feels balanced
+6. Test full flow: Super+Cmd+Space → type → Enter → thinking → response → Esc
 
-**Session 6 continues with:** Polish pass — font, spacing, color tokens, opacity transitions
+**Session 7 continues with:** Screen capture + vision model integration
 
 **Notion task:** 34e7600e54c781f3a741d961b4482155 (Milestone 2 task)
-**Task doc:** `docs/tasks/2026-04-26-m2-the-overlay.md` (already exists)
+**Task doc:** `docs/tasks/2026-04-26-m2-the-overlay.md`
 
 ---
 

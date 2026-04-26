@@ -13,7 +13,7 @@ class HotkeyListener:
         self._listener: keyboard.GlobalHotKeys | None = None
 
     def start(self) -> None:
-        self._listener = keyboard.GlobalHotKeys({"<super>+<space>": self._on_hotkey})
+        self._listener = keyboard.GlobalHotKeys({"<cmd>+<space>": self._on_hotkey})
         self._thread = threading.Thread(target=self._listener.run, daemon=True)
         self._thread.start()
 
