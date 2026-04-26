@@ -4,7 +4,7 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 <p align="center">
-  <img src="assets/logo.svg" alt="spaiOS logo" width="200" />
+  <img src="docs/logos/spaiOS-logo.png" alt="spaiOS logo" width="400" />
 </p>
 
 A floating, screen-aware AI overlay for Ubuntu. Press `Super+Space` — spaiOS sees your screen, understands what you're doing, and helps. Powered by local Ollama models. No cloud, no subscriptions.
