@@ -1,0 +1,25 @@
+[project]
+name = "spaiOS"
+version = "0.1.0"
+description = "Spatial AI overlay for Linux desktop — local LLM assistant with screen vision"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ollama",
+    "pillow",
+    "pyqt6",
+    "pynput",
+    "python-xlib",
+]
+
+[project.scripts]
+spaiOS = "spaiOS.main:main"
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "black>=26.3.1",
+    "flake8>=7.3.0",
+]

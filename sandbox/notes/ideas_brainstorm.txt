@@ -1,0 +1,2 @@
+app idea: ai for groceries
+app idea: sleep tracker
