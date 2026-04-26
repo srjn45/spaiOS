@@ -4,6 +4,7 @@ import ollama
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from spaiOS.core import context as ctx
+from spaiOS.agents.file_agent import DeleteConfirmationRequired, FileAgent, FileEntry
 
 _MODEL = "llama3.2:3b"
 _VISION_MODEL = "moondream:latest"
@@ -42,13 +43,152 @@ def _build_system_prompt(ctx_data: dict) -> str:
     return "Context from the user's screen:\n" + "\n".join(parts)
 
 
+def _format_entries(entries: list[FileEntry]) -> str:
+    if not entries:
+        return "(empty directory)"
+    lines = []
+    for e in entries:
+        kind = "DIR " if e.is_dir else "FILE"
+        size = f" ({e.size_bytes}B)" if not e.is_dir else ""
+        lines.append(f"  {kind}  {e.path}{size}")
+    return "\n".join(lines)
+
+
+_FILE_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "list_directory",
+            "description": "List files and folders in the user's sandbox directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subpath": {
+                        "type": "string",
+                        "description": "Sandbox-relative path to list. Empty string for root.",
+                    }
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_folder",
+            "description": "Create a new folder inside the sandbox.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subpath": {
+                        "type": "string",
+                        "description": "Sandbox-relative path for the new folder.",
+                    }
+                },
+                "required": ["subpath"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "move_file",
+            "description": "Move a file or folder to a new location inside the sandbox.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "src": {
+                        "type": "string",
+                        "description": "Source path (sandbox-relative).",
+                    },
+                    "dst": {
+                        "type": "string",
+                        "description": "Destination path (sandbox-relative). "
+                        "If this is an existing directory the file is placed inside it.",
+                    },
+                },
+                "required": ["src", "dst"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rename_file",
+            "description": "Rename a file within its current directory.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "src": {
+                        "type": "string",
+                        "description": "Current file path (sandbox-relative).",
+                    },
+                    "new_name": {
+                        "type": "string",
+                        "description": "New filename — bare name only, no path separators.",
+                    },
+                },
+                "required": ["src", "new_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_file",
+            "description": "Delete a file or empty folder. User confirmation required.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subpath": {
+                        "type": "string",
+                        "description": "Sandbox-relative path to delete.",
+                    }
+                },
+                "required": ["subpath"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file_summary",
+            "description": "Return a short preview of a file's content (first 500 characters).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "subpath": {
+                        "type": "string",
+                        "description": "Sandbox-relative path to the file.",
+                    },
+                    "max_chars": {
+                        "type": "integer",
+                        "description": "Maximum characters to return (default 500).",
+                    },
+                },
+                "required": ["subpath"],
+            },
+        },
+    },
+]
+
+_CONFIRM_WORDS = {"yes", "y", "confirm", "ok", "sure", "proceed", "yep", "yup"}
+_DENY_WORDS = {"no", "n", "cancel", "nope", "nah", "stop"}
+_TOOL_LOOP_LIMIT = 10
+
+
 class Orchestrator:
     _MAX_HISTORY_PAIRS = 10
 
     def __init__(self) -> None:
         self._history: list[dict] = []
+        self._file_agent = FileAgent()
+        self._pending_delete: str | None = None
 
     def ask(self, prompt: str) -> str:
+        if self._pending_delete is not None:
+            return self._handle_delete_response(prompt)
+
         ctx_data = ctx.capture()
         system_prompt = _build_system_prompt(ctx_data)
         messages: list[dict] = []
@@ -56,8 +196,9 @@ class Orchestrator:
             messages.append({"role": "system", "content": system_prompt})
         messages.extend(self._history)
         messages.append({"role": "user", "content": prompt})
-        response = ollama.chat(model=_MODEL, messages=messages)
-        reply = response.message.content
+
+        reply = self._run_with_tools(messages)
+
         self._history.append({"role": "user", "content": prompt})
         self._history.append({"role": "assistant", "content": reply})
         max_msgs = self._MAX_HISTORY_PAIRS * 2
@@ -65,8 +206,85 @@ class Orchestrator:
             self._history = self._history[-max_msgs:]
         return reply
 
+    def _run_with_tools(self, messages: list[dict]) -> str:
+        loop_messages = list(messages)
+
+        for _ in range(_TOOL_LOOP_LIMIT):
+            response = ollama.chat(
+                model=_MODEL, messages=loop_messages, tools=_FILE_TOOLS
+            )
+            msg = response.message
+
+            if not msg.tool_calls:
+                return msg.content or ""
+
+            # Append the assistant turn (may include tool_calls)
+            loop_messages.append(msg)
+
+            for tc in msg.tool_calls:
+                result = self._dispatch_tool(
+                    tc.function.name, tc.function.arguments or {}
+                )
+                loop_messages.append({"role": "tool", "content": result})
+
+                if self._pending_delete is not None:
+                    return (
+                        f"I need your confirmation to delete '{self._pending_delete}'. "
+                        f"Should I go ahead? (yes/no)"
+                    )
+
+        return "I reached the tool call limit — please try a simpler request."
+
+    def _dispatch_tool(self, name: str, args: dict) -> str:
+        try:
+            if name == "list_directory":
+                entries = self._file_agent.list_directory(args.get("subpath", ""))
+                return _format_entries(entries)
+            if name == "create_folder":
+                path = self._file_agent.create_folder(args["subpath"])
+                return f"Created folder: {path}"
+            if name == "move_file":
+                new_path = self._file_agent.move_file(args["src"], args["dst"])
+                return f"Moved to: {new_path}"
+            if name == "rename_file":
+                new_path = self._file_agent.rename_file(args["src"], args["new_name"])
+                return f"Renamed to: {new_path}"
+            if name == "delete_file":
+                deleted = self._file_agent.delete_file(args["subpath"])
+                return f"Deleted: {deleted}"
+            if name == "read_file_summary":
+                summary = self._file_agent.read_file_summary(
+                    args["subpath"], args.get("max_chars", 500)
+                )
+                return summary
+            return f"Unknown tool: {name}"
+        except DeleteConfirmationRequired as exc:
+            self._pending_delete = exc.path
+            return "confirmation_required"
+        except Exception as exc:
+            return f"Error: {exc}"
+
+    def _handle_delete_response(self, prompt: str) -> str:
+        lower = prompt.strip().lower()
+        path = self._pending_delete
+        self._pending_delete = None
+
+        if lower in _CONFIRM_WORDS:
+            try:
+                deleted = self._file_agent.delete_file(path, confirmed=True)
+                reply = f"Done — deleted '{deleted}'."
+            except Exception as exc:
+                reply = f"Deletion failed: {exc}"
+        else:
+            reply = f"OK, I won't delete '{path}'."
+
+        self._history.append({"role": "user", "content": prompt})
+        self._history.append({"role": "assistant", "content": reply})
+        return reply
+
     def clear_history(self) -> None:
         self._history = []
+        self._pending_delete = None
 
     def ask_with_vision(self, prompt: str, image_bytes: bytes) -> str:
         b64 = base64.b64encode(image_bytes).decode()

@@ -5,20 +5,22 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 5, Session 13
+## Current: Phase 1 — Milestone 5, Session 14
 
-**Goal:** Wire File Agent into the Orchestrator — "Organize my sandbox" → AI calls tools → proposes categories → user confirms → files moved.
+**Goal:** End-to-end smoke test and polish — run the overlay live, test "list my sandbox files" and "organize my sandbox", verify the delete confirmation flow, fix any rough edges.
 
 **Steps (in order):**
-1. Define Ollama function-calling schemas for all 6 File Agent tools in `src/core/orchestrator.py`
-2. Orchestrator detects tool calls in Ollama response and dispatches to `FileAgent`
-3. Tool result fed back to Ollama for final natural-language response
-4. `delete_file` confirmation flow: when `DeleteConfirmationRequired` is raised, overlay displays a confirmation prompt; user response re-calls `delete_file(confirmed=True)`
-5. Test end-to-end: "list my sandbox files" → AI sees directory listing
-6. Test end-to-end: "organize my sandbox" → AI proposes folders → user confirms → files moved
+1. Create test files in `~/spaiOS-sandbox/` (mix of types: .txt, .py, images, etc.)
+2. Launch overlay: `spaiOS`
+3. Test "list my sandbox files" → confirm AI calls list_directory and shows a listing
+4. Test "organize my sandbox" → AI creates folders, moves files; check they land correctly
+5. Test delete flow: ask AI to delete a file → confirm amber sphere + "yes/no" prompt → type "yes" → confirm deletion; type "no" → confirm cancellation
+6. Test "read summary of <file>" → AI shows file preview
+7. Tune system prompt if model isn't picking up tools reliably (add explicit instruction to use tools for file tasks)
+8. Commit any fixes
 
-**Notion task:** phase1_m5_file_agent (same task, continuing)
-**Task doc:** `docs/tasks/2026-04-27-m5-orchestrator-routing.md` (create at session start)
+**Notion task:** phase1_m5_file_agent (same task)
+**Task doc:** `docs/tasks/2026-04-27-m5-e2e-smoke.md` (create at session start)
 
 ---
 
