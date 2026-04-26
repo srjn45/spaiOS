@@ -1,22 +1,38 @@
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QWidget
 
+from spaiOS.ui import tokens
+
 _INPUT_STYLE = (
-    "QLineEdit { background: rgba(255,255,255,20); border: 1px solid rgba(255,255,255,40);"
-    " border-radius: 8px; color: white; padding: 6px 10px; font-size: 14px; }"
-    "QLineEdit:focus { border-color: rgba(140,120,255,180); }"
-    "QLineEdit:disabled { color: rgba(255,255,255,60); }"
+    f"QLineEdit {{ background: {tokens.BG_SURFACE}; border: 1px solid {tokens.BORDER_SUBTLE};"
+    f" border-radius: 8px; color: {tokens.TEXT_PRIMARY};"
+    f" padding: 7px 12px; font-size: {tokens.FONT_SIZE_MD}px; }}"
+    f"QLineEdit:focus {{ border-color: {tokens.BORDER_FOCUS}; }}"
+    f"QLineEdit:disabled {{ color: {tokens.TEXT_MUTED}; }}"
 )
 
 _RESPONSE_STYLE = (
-    "QTextEdit { background: rgba(255,255,255,10); border: 1px solid rgba(255,255,255,20);"
-    " border-radius: 8px; color: rgba(220,215,255,220); padding: 8px 10px; font-size: 13px; }"
+    f"QTextEdit {{ background: {tokens.BG_SURFACE}; border: 1px solid {tokens.BORDER_SUBTLE};"
+    f" border-radius: 8px; color: {tokens.TEXT_SECONDARY};"
+    f" padding: 10px 12px; font-size: {tokens.FONT_SIZE_MD}px; }}"
 )
 
 _RESPONSE_ERROR_STYLE = (
-    "QTextEdit { background: rgba(255,60,60,15); border: 1px solid rgba(255,80,80,40);"
-    " border-radius: 8px; color: rgba(255,160,160,220); padding: 8px 10px; font-size: 13px; }"
+    f"QTextEdit {{ background: {tokens.BG_ERROR}; border: 1px solid {tokens.BORDER_ERROR};"
+    f" border-radius: 8px; color: {tokens.TEXT_ERROR};"
+    f" padding: 10px 12px; font-size: {tokens.FONT_SIZE_MD}px; }}"
 )
+
+_BUTTON_STYLE = (
+    f"QPushButton {{ background: {tokens.BG_ACCENT}; border: none; border-radius: 8px;"
+    f" color: white; font-size: {tokens.FONT_SIZE_LG}px; }}"
+    f"QPushButton:hover {{ background: {tokens.BG_ACCENT_HOVER}; }}"
+    f"QPushButton:disabled {{ background: {tokens.BG_ACCENT_DISABLED};"
+    f" color: {tokens.TEXT_MUTED}; }}"
+)
+
+_FONT = QFont(tokens.FONT_FAMILY.split(",")[0].strip(), tokens.FONT_SIZE_MD)
 
 
 class InputRow(QWidget):
@@ -30,17 +46,13 @@ class InputRow(QWidget):
 
         self._input = QLineEdit()
         self._input.setPlaceholderText("Ask anything…")
+        self._input.setFont(_FONT)
         self._input.setStyleSheet(_INPUT_STYLE)
         self._input.returnPressed.connect(self._on_submit)
 
         self._button = QPushButton("↵")
         self._button.setFixedSize(36, 36)
-        self._button.setStyleSheet(
-            "QPushButton { background: rgba(140,120,255,120); border: none; border-radius: 8px;"
-            " color: white; font-size: 16px; }"
-            "QPushButton:hover { background: rgba(140,120,255,180); }"
-            "QPushButton:disabled { background: rgba(60,60,80,80); color: rgba(255,255,255,60); }"
-        )
+        self._button.setStyleSheet(_BUTTON_STYLE)
         self._button.clicked.connect(self._on_submit)
 
         layout.addWidget(self._input)
@@ -66,7 +78,10 @@ class ResponseView(QTextEdit):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setReadOnly(True)
-        self.setMinimumHeight(80)
+        self.setMinimumHeight(100)
+        self.setFont(
+            QFont(tokens.FONT_FAMILY.split(",")[0].strip(), tokens.FONT_SIZE_MD)
+        )
         self.setStyleSheet(_RESPONSE_STYLE)
 
     def show_response(self, text: str) -> None:

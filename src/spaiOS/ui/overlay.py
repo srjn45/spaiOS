@@ -1,9 +1,12 @@
-from PyQt6.QtCore import Qt, QEvent, QTimer, pyqtSlot
+from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
 
 from spaiOS.core.orchestrator import AskThread
+from spaiOS.ui import tokens
 from spaiOS.ui.components import InputRow, ResponseView
 from spaiOS.ui.neural_sphere import NeuralSphere
+
+_FADE_MS = 200
 
 
 class Overlay(QMainWindow):
@@ -13,6 +16,7 @@ class Overlay(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._active_thread: AskThread | None = None
+        self._fade_in: QPropertyAnimation | None = None
         self._build_window()
         self._center_on_screen()
 
@@ -28,11 +32,11 @@ class Overlay(QMainWindow):
         container = QWidget()
         container.setObjectName("container")
         container.setStyleSheet(
-            "#container { background: rgba(10, 10, 20, 210); border-radius: 20px; }"
+            f"#container {{ background: {tokens.BG_WINDOW}; border-radius: 22px; }}"
         )
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(12)
+        layout.setContentsMargins(22, 20, 22, 20)
+        layout.setSpacing(14)
 
         self._sphere = NeuralSphere()
         layout.addWidget(self._sphere)
@@ -55,12 +59,23 @@ class Overlay(QMainWindow):
         y = (geom.height() - self.HEIGHT) // 2 + geom.y()
         self.move(x, y)
 
+    def _start_fade_in(self) -> None:
+        self.setWindowOpacity(0.0)
+        anim = QPropertyAnimation(self, b"windowOpacity", self)
+        anim.setDuration(_FADE_MS)
+        anim.setStartValue(0.0)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.start()
+        self._fade_in = anim
+
     @pyqtSlot()
     def toggle(self) -> None:
         if self.isVisible():
             self.hide()
         else:
-            self.show()
+            super().show()
+            self._start_fade_in()
             self.raise_()
             self.activateWindow()
             self._input_row.focus()

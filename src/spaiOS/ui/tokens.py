@@ -1,0 +1,30 @@
+FONT_FAMILY = "Ubuntu Sans, Ubuntu, sans-serif"
+
+FONT_SIZE_SM = 12
+FONT_SIZE_MD = 14
+FONT_SIZE_LG = 15
+
+# Background
+BG_WINDOW = "rgba(10, 10, 20, 215)"
+BG_SURFACE = "rgba(255, 255, 255, 14)"
+BG_SURFACE_ACTIVE = "rgba(255, 255, 255, 22)"
+BG_ACCENT = "rgba(140, 120, 255, 120)"
+BG_ACCENT_HOVER = "rgba(140, 120, 255, 185)"
+BG_ACCENT_DISABLED = "rgba(60, 60, 80, 80)"
+BG_ERROR = "rgba(255, 60, 60, 15)"
+
+# Border
+BORDER_SUBTLE = "rgba(255, 255, 255, 38)"
+BORDER_FOCUS = "rgba(140, 120, 255, 185)"
+BORDER_ERROR = "rgba(255, 80, 80, 40)"
+
+# Text
+TEXT_PRIMARY = "rgba(235, 230, 255, 230)"
+TEXT_SECONDARY = "rgba(220, 215, 255, 185)"
+TEXT_MUTED = "rgba(255, 255, 255, 60)"
+TEXT_ERROR = "rgba(255, 160, 160, 220)"
+
+# Sphere glow colors per state (R, G, B)
+SPHERE_IDLE_COLOR = (120, 100, 255)
+SPHERE_THINKING_COLOR = (80, 160, 255)
+SPHERE_RESPONDING_COLOR = (140, 255, 180)
