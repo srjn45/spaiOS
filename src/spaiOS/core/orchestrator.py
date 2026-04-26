@@ -9,6 +9,26 @@ _MODEL = "llama3.2:3b"
 _VISION_MODEL = "moondream:latest"
 
 
+_CLARIFYING_PREFIXES = (
+    "could you clarify",
+    "can you clarify",
+    "could you tell me",
+    "can you tell me",
+    "what do you mean",
+    "which one",
+    "could you specify",
+    "could you provide more",
+)
+
+
+def is_clarifying_question(text: str) -> bool:
+    stripped = text.strip()
+    if stripped.endswith("?"):
+        return True
+    lower = stripped.lower()
+    return any(lower.startswith(p) for p in _CLARIFYING_PREFIXES)
+
+
 def _build_system_prompt(ctx_data: dict) -> str:
     parts = []
     if ctx_data.get("app_name"):

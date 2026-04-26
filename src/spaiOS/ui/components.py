@@ -24,6 +24,12 @@ _RESPONSE_ERROR_STYLE = (
     f" padding: 10px 12px; font-size: {tokens.FONT_SIZE_MD}px; }}"
 )
 
+_RESPONSE_QUESTION_STYLE = (
+    f"QTextEdit {{ background: rgba(255, 175, 50, 12); border: 1px solid rgba(255, 175, 50, 100);"
+    f" border-radius: 8px; color: rgba(255, 210, 130, 220);"
+    f" padding: 10px 12px; font-size: {tokens.FONT_SIZE_MD}px; }}"
+)
+
 _BUTTON_STYLE = (
     f"QPushButton {{ background: {tokens.BG_ACCENT}; border: none; border-radius: 8px;"
     f" color: white; font-size: {tokens.FONT_SIZE_LG}px; }}"
@@ -104,6 +110,9 @@ class InputRow(QWidget):
     def focus(self) -> None:
         self._input.setFocus()
 
+    def set_placeholder(self, text: str) -> None:
+        self._input.setPlaceholderText(text)
+
 
 class ResponseView(QTextEdit):
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -117,6 +126,10 @@ class ResponseView(QTextEdit):
 
     def show_response(self, text: str) -> None:
         self.setStyleSheet(_RESPONSE_STYLE)
+        self.setPlainText(text)
+
+    def show_question(self, text: str) -> None:
+        self.setStyleSheet(_RESPONSE_QUESTION_STYLE)
         self.setPlainText(text)
 
     def show_error(self, text: str) -> None:

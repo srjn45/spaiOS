@@ -2,6 +2,7 @@ from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, QTimer, p
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
 
 from spaiOS.core.orchestrator import AskThread, AskWithVisionThread, Orchestrator
+from spaiOS.core.orchestrator import is_clarifying_question
 from spaiOS.core.screen_capture import capture_jpeg
 from spaiOS.ui import tokens
 from spaiOS.ui.components import InputRow, ResponseView
@@ -85,6 +86,7 @@ class Overlay(QMainWindow):
 
     def _on_prompt_submitted(self, prompt: str) -> None:
         self._input_row.set_enabled(False)
+        self._input_row.set_placeholder("Ask anything…")
         self._response_view.clear()
         self._sphere.set_state("thinking")
 
@@ -109,10 +111,15 @@ class Overlay(QMainWindow):
         self._active_thread.start()
 
     def _on_result(self, text: str) -> None:
-        self._sphere.set_state("responding")
-        self._response_view.show_response(text)
         self._input_row.clear()
-        QTimer.singleShot(2000, lambda: self._sphere.set_state("idle"))
+        if is_clarifying_question(text):
+            self._sphere.set_state("questioning")
+            self._response_view.show_question(text)
+            self._input_row.set_placeholder("Your answer…")
+        else:
+            self._sphere.set_state("responding")
+            self._response_view.show_response(text)
+            QTimer.singleShot(2000, lambda: self._sphere.set_state("idle"))
 
     def _on_error(self, msg: str) -> None:
         self._sphere.set_state("idle")

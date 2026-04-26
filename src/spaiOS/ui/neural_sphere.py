@@ -10,23 +10,26 @@ from spaiOS.ui.tokens import (
     SPHERE_IDLE_COLOR,
     SPHERE_THINKING_COLOR,
     SPHERE_RESPONDING_COLOR,
+    SPHERE_QUESTIONING_COLOR,
 )
 
 # ── Sphere geometry (built once at import) ─────────────────────────────────────
-_N = 60   # node count — clear mesh, light enough for 50ms paint loop
+_N = 60  # node count — clear mesh, light enough for 50ms paint loop
 
 
 def _build_sphere(n: int) -> list[tuple[float, float, float]]:
-    phi = (1 + 5 ** 0.5) / 2
+    phi = (1 + 5**0.5) / 2
     pts = []
     for i in range(n):
         theta = math.acos(1 - 2 * (i + 0.5) / n)
         psi = 2 * math.pi * i / phi
-        pts.append((
-            math.sin(theta) * math.cos(psi),
-            math.sin(theta) * math.sin(psi),
-            math.cos(theta),
-        ))
+        pts.append(
+            (
+                math.sin(theta) * math.cos(psi),
+                math.sin(theta) * math.sin(psi),
+                math.cos(theta),
+            )
+        )
     return pts
 
 
@@ -37,26 +40,29 @@ _EDGES: list[tuple[int, int]] = [
     (i, j)
     for i in range(_N)
     for j in range(i + 1, _N)
-    if math.sqrt(sum((a - b) ** 2 for a, b in zip(_NODES_BASE[i], _NODES_BASE[j]))) < _EDGE_THRESH
+    if math.sqrt(sum((a - b) ** 2 for a, b in zip(_NODES_BASE[i], _NODES_BASE[j])))
+    < _EDGE_THRESH
 ]
 
 # ── State labels ───────────────────────────────────────────────────────────────
 _IDLE = "idle"
 _THINKING = "thinking"
 _RESPONDING = "responding"
+_QUESTIONING = "questioning"
 
 _TICK_MS = 50
-_X_TILT = 0.12   # fixed X-axis tilt (radians) — matches logo orientation
+_X_TILT = 0.12  # fixed X-axis tilt (radians) — matches logo orientation
 
 
 @dataclass
 class _Spark:
     """One signal streak fired from a node."""
-    px_rel: float    # node 2D x, in sphere-radius units (relative to center)
-    py_rel: float    # node 2D y, in sphere-radius units
-    dx: float        # travel direction x (unit vector)
-    dy: float        # travel direction y
-    length: float    # maximum travel distance, in sphere-radius units
+
+    px_rel: float  # node 2D x, in sphere-radius units (relative to center)
+    py_rel: float  # node 2D y, in sphere-radius units
+    dx: float  # travel direction x (unit vector)
+    dy: float  # travel direction y
+    length: float  # maximum travel distance, in sphere-radius units
     age: int = 0
     max_age: int = 10
 
@@ -71,10 +77,10 @@ def _rotate(pts: list, ay: float, ax: float) -> list[tuple[float, float, float]]
     cx, sx = math.cos(ax), math.sin(ax)
     out = []
     for x0, y0, z0 in pts:
-        x1 =  x0 * cy + z0 * sy
+        x1 = x0 * cy + z0 * sy
         z1 = -x0 * sy + z0 * cy
-        y2 =  y0 * cx - z1 * sx
-        z2 =  y0 * sx + z1 * cx
+        y2 = y0 * cx - z1 * sx
+        z2 = y0 * sx + z1 * cx
         out.append((x1, y2, z2))
     return out
 
@@ -87,10 +93,12 @@ class NeuralSphere(QWidget):
         self._state = _IDLE
         self._tick = 0
         self._angle_y = 0.0
-        self._nodes: list[tuple[float, float, float]] = _rotate(_NODES_BASE, 0.0, _X_TILT)
+        self._nodes: list[tuple[float, float, float]] = _rotate(
+            _NODES_BASE, 0.0, _X_TILT
+        )
 
         self._sparks: list[_Spark] = []
-        self._cooldown = [0] * _N   # per-node firing cooldown in ticks
+        self._cooldown = [0] * _N  # per-node firing cooldown in ticks
 
         self._pulse_t = 0.0
         self._converge_t = 0.0
@@ -106,7 +114,7 @@ class NeuralSphere(QWidget):
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def set_state(self, state: str) -> None:
-        if state not in (_IDLE, _THINKING, _RESPONDING):
+        if state not in (_IDLE, _THINKING, _RESPONDING, _QUESTIONING):
             return
         self._state = state
         if state == _RESPONDING:
@@ -118,7 +126,12 @@ class NeuralSphere(QWidget):
         self._tick += 1
         self._pulse_t = (self._tick * _TICK_MS / 1000.0) % (2 * math.pi)
 
-        rot_speed = {_IDLE: 0.005, _THINKING: 0.022, _RESPONDING: 0.010}[self._state]
+        rot_speed = {
+            _IDLE: 0.005,
+            _THINKING: 0.022,
+            _RESPONDING: 0.010,
+            _QUESTIONING: 0.007,
+        }[self._state]
         self._angle_y = (self._angle_y + rot_speed) % (2 * math.pi)
         self._nodes = _rotate(_NODES_BASE, self._angle_y, _X_TILT)
 
@@ -130,6 +143,7 @@ class NeuralSphere(QWidget):
             _IDLE: SPHERE_IDLE_COLOR,
             _THINKING: SPHERE_THINKING_COLOR,
             _RESPONDING: SPHERE_RESPONDING_COLOR,
+            _QUESTIONING: SPHERE_QUESTIONING_COLOR,
         }[self._state]
         s = 0.06
         self._glow_r = _lerp(self._glow_r, float(tr), s)
@@ -137,7 +151,12 @@ class NeuralSphere(QWidget):
         self._glow_b = _lerp(self._glow_b, float(tb), s)
 
         # Random node firing
-        fire_p = {_IDLE: 0.012, _THINKING: 0.050, _RESPONDING: 0.0}[self._state]
+        fire_p = {
+            _IDLE: 0.012,
+            _THINKING: 0.050,
+            _RESPONDING: 0.0,
+            _QUESTIONING: 0.018,
+        }[self._state]
         for i, (x3, y3, z3) in enumerate(self._nodes):
             if self._cooldown[i] > 0:
                 self._cooldown[i] -= 1
@@ -159,13 +178,16 @@ class NeuralSphere(QWidget):
         for _ in range(random.randint(2, 3)):
             ang = random.uniform(-0.4, 0.4)
             ca, sa = math.cos(ang), math.sin(ang)
-            self._sparks.append(_Spark(
-                px_rel=x3, py_rel=y3,
-                dx=ox * ca - oy * sa,
-                dy=ox * sa + oy * ca,
-                length=random.uniform(0.18, 0.52),
-                max_age=random.randint(7, 14),
-            ))
+            self._sparks.append(
+                _Spark(
+                    px_rel=x3,
+                    py_rel=y3,
+                    dx=ox * ca - oy * sa,
+                    dy=ox * sa + oy * ca,
+                    length=random.uniform(0.18, 0.52),
+                    max_age=random.randint(7, 14),
+                )
+            )
 
     # ── Paint ──────────────────────────────────────────────────────────────────
 
@@ -207,8 +229,9 @@ class NeuralSphere(QWidget):
         grad.setColorAt(0.55, QColor(gr, gg, gb, 35))
         grad.setColorAt(1.0, QColor(0, 0, 0, 0))
         painter.setBrush(grad)
-        painter.drawEllipse(int(cx - core_r), int(cy - core_r),
-                            int(core_r * 2), int(core_r * 2))
+        painter.drawEllipse(
+            int(cx - core_r), int(cy - core_r), int(core_r * 2), int(core_r * 2)
+        )
 
     # ── Mesh ───────────────────────────────────────────────────────────────────
 
@@ -221,7 +244,7 @@ class NeuralSphere(QWidget):
             x1, y1, z1 = nodes[i]
             x2, y2, z2 = nodes[j]
             avg_z = (z1 + z2) / 2
-            depth = (avg_z + 1) / 2          # 0 = back, 1 = front
+            depth = (avg_z + 1) / 2  # 0 = back, 1 = front
             # Limb darkening: edges near silhouette are dimmer
             mx, my = (x1 + x2) / 2, (y1 + y2) / 2
             limb = max(0.0, 1.0 - (mx * mx + my * my) ** 1.3)
@@ -229,7 +252,7 @@ class NeuralSphere(QWidget):
             if alpha < 5:
                 continue
             # Front edges blend toward white-cyan; back edges stay glow color
-            t = depth ** 0.6
+            t = depth**0.6
             er = min(255, int(gr + (210 - gr) * t))
             eg = min(255, int(gg + (235 - gg) * t))
             eb = min(255, int(gb + (255 - gb) * t * 0.5))
@@ -237,8 +260,10 @@ class NeuralSphere(QWidget):
             pen.setWidth(max(1, int(depth * 2)))
             painter.setPen(pen)
             painter.drawLine(
-                int(cx + x1 * R), int(cy + y1 * R),
-                int(cx + x2 * R), int(cy + y2 * R),
+                int(cx + x1 * R),
+                int(cy + y1 * R),
+                int(cx + x2 * R),
+                int(cy + y2 * R),
             )
 
         # ── Nodes back → front ─────────────────────────────────────────────────
@@ -270,7 +295,7 @@ class NeuralSphere(QWidget):
 
         for sp in self._sparks:
             progress = sp.age / max(sp.max_age, 1)
-            fade = 1.0 - progress ** 1.4
+            fade = 1.0 - progress**1.4
             alpha = int(190 * fade)
             if alpha < 8:
                 continue
