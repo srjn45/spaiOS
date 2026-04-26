@@ -1,7 +1,8 @@
 from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
 
-from spaiOS.core.orchestrator import AskThread
+from spaiOS.core.orchestrator import AskThread, AskWithVisionThread
+from spaiOS.core.screen_capture import capture_jpeg
 from spaiOS.ui import tokens
 from spaiOS.ui.components import InputRow, ResponseView
 from spaiOS.ui.neural_sphere import NeuralSphere
@@ -15,7 +16,7 @@ class Overlay(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
-        self._active_thread: AskThread | None = None
+        self._active_thread: AskThread | AskWithVisionThread | None = None
         self._fade_in: QPropertyAnimation | None = None
         self._build_window()
         self._center_on_screen()
@@ -85,7 +86,21 @@ class Overlay(QMainWindow):
         self._response_view.clear()
         self._sphere.set_state("thinking")
 
-        self._active_thread = AskThread(prompt)
+        if self._input_row.camera_active:
+            try:
+                image_bytes = capture_jpeg()
+            except Exception as exc:
+                self._on_error(f"Screen capture failed: {exc}")
+                self._input_row.set_enabled(True)
+                self._input_row.focus()
+                return
+            thread: AskThread | AskWithVisionThread = AskWithVisionThread(
+                prompt, image_bytes
+            )
+        else:
+            thread = AskThread(prompt)
+
+        self._active_thread = thread
         self._active_thread.result.connect(self._on_result)
         self._active_thread.error.connect(self._on_error)
         self._active_thread.finished.connect(self._on_thread_finished)

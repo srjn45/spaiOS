@@ -10,6 +10,7 @@ dependencies = [
     "pyqt6",
     "pynput",
     "python-xlib",
+    "mss>=10.2.0",
 ]
 
 [project.scripts]

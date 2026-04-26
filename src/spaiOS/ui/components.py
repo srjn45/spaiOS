@@ -32,6 +32,18 @@ _BUTTON_STYLE = (
     f" color: {tokens.TEXT_MUTED}; }}"
 )
 
+_CAM_STYLE_OFF = (
+    f"QPushButton {{ background: {tokens.BG_SURFACE}; border: 1px solid {tokens.BORDER_SUBTLE};"
+    f" border-radius: 8px; color: {tokens.TEXT_MUTED}; font-size: {tokens.FONT_SIZE_LG}px; }}"
+    f"QPushButton:hover {{ border-color: {tokens.BORDER_FOCUS}; color: {tokens.TEXT_PRIMARY}; }}"
+)
+
+_CAM_STYLE_ON = (
+    f"QPushButton {{ background: rgba(140,120,255,60); border: 1px solid {tokens.BORDER_FOCUS};"
+    f" border-radius: 8px; color: {tokens.TEXT_PRIMARY}; font-size: {tokens.FONT_SIZE_LG}px; }}"
+    f"QPushButton:hover {{ background: rgba(140,120,255,90); }}"
+)
+
 _FONT = QFont(tokens.FONT_FAMILY.split(",")[0].strip(), tokens.FONT_SIZE_MD)
 
 
@@ -50,22 +62,41 @@ class InputRow(QWidget):
         self._input.setStyleSheet(_INPUT_STYLE)
         self._input.returnPressed.connect(self._on_submit)
 
+        self._cam_button = QPushButton("◉")
+        self._cam_button.setFixedSize(36, 36)
+        self._cam_button.setStyleSheet(_CAM_STYLE_OFF)
+        self._cam_button.setToolTip("Toggle screen capture")
+        self._cam_button.clicked.connect(self._on_cam_toggle)
+        self._cam_active = False
+
         self._button = QPushButton("↵")
         self._button.setFixedSize(36, 36)
         self._button.setStyleSheet(_BUTTON_STYLE)
         self._button.clicked.connect(self._on_submit)
 
         layout.addWidget(self._input)
+        layout.addWidget(self._cam_button)
         layout.addWidget(self._button)
+
+    def _on_cam_toggle(self) -> None:
+        self._cam_active = not self._cam_active
+        self._cam_button.setStyleSheet(
+            _CAM_STYLE_ON if self._cam_active else _CAM_STYLE_OFF
+        )
 
     def _on_submit(self) -> None:
         text = self._input.text().strip()
         if text:
             self.submitted.emit(text)
 
+    @property
+    def camera_active(self) -> bool:
+        return self._cam_active
+
     def set_enabled(self, enabled: bool) -> None:
         self._input.setEnabled(enabled)
         self._button.setEnabled(enabled)
+        self._cam_button.setEnabled(enabled)
 
     def clear(self) -> None:
         self._input.clear()

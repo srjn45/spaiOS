@@ -5,22 +5,17 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 3, Session 7
+## Current: Phase 1 — Milestone 3, Session 8
 
-**Goal:** Screen capture + vision model integration — capture the active window and feed it to `llava:7b` alongside the user prompt.
+**Goal:** AT-SPI context reader — extract active app name, window title, and selected/visible text from the focused window to inject into the system prompt.
 
 **Steps (in order):**
-1. `src/spaiOS/core/screen_capture.py` — use `mss` (or `PIL` + `Xlib`) to capture the active window region; return a JPEG bytes buffer
-2. `src/spaiOS/core/orchestrator.py` — add `AskWithVisionThread`: sends user message + base64-encoded image to `ollama.chat` with `llava:7b`
-3. `src/spaiOS/ui/overlay.py` — add a camera-icon toggle button in the InputRow area; when active, capture is taken on submit
-4. `src/spaiOS/ui/components.py` — extend `InputRow` with an optional camera toggle (`QPushButton` icon, no text)
-5. Wire: toggle on → `AskWithVisionThread` used instead of `AskThread`; toggle off → text-only as before
-6. Test: activate overlay, toggle camera, ask "what do you see?" — verify `llava:7b` response describes screen content
+1. `src/spaiOS/core/context.py` — new file; `get_window_info() -> dict` via `xdotool getactivewindow getwindowname`; `get_atspi_text(max_chars: int = 2000) -> list[str]` via `pyatspi`; `capture() -> dict` combining all fields
+2. `src/spaiOS/core/orchestrator.py` — `Orchestrator.ask()` calls `context.capture()` and prepends a system prompt with `app_name`, `window_title`, `visible_text`
+3. Test: with a text editor open, ask "what text is on screen?" — verify the response references actual content
 
-**Session 8 continues with:** AT-SPI context reader (active app name + selected text)
-
-**Notion task:** (create new M3 task in Notion)
-**Task doc:** `docs/tasks/2026-04-27-m3-vision.md` (create at session start)
+**Notion task:** 34e7600e54c781da8290e0c96c87ea64
+**Task doc:** `docs/tasks/2026-04-27-m3-atspi.md` (create at session start)
 
 ---
 
