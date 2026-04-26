@@ -3,16 +3,34 @@ import base64
 import ollama
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from spaiOS.core import context as ctx
+
 _MODEL = "llama3.2:3b"
 _VISION_MODEL = "moondream:latest"
 
 
+def _build_system_prompt(ctx_data: dict) -> str:
+    parts = []
+    if ctx_data.get("app_name"):
+        parts.append(f"Active app: {ctx_data['app_name']}")
+    if ctx_data.get("window_title"):
+        parts.append(f"Window title: {ctx_data['window_title']}")
+    if ctx_data.get("visible_text"):
+        parts.append(f"Visible text:\n{ctx_data['visible_text']}")
+    if not parts:
+        return ""
+    return "Context from the user's screen:\n" + "\n".join(parts)
+
+
 class Orchestrator:
     def ask(self, prompt: str) -> str:
-        response = ollama.chat(
-            model=_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-        )
+        ctx_data = ctx.capture()
+        system_prompt = _build_system_prompt(ctx_data)
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        response = ollama.chat(model=_MODEL, messages=messages)
         return response.message.content
 
     def ask_with_vision(self, prompt: str, image_bytes: bytes) -> str:
