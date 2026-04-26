@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
 
-from spaiOS.core.orchestrator import AskThread, AskWithVisionThread
+from spaiOS.core.orchestrator import AskThread, AskWithVisionThread, Orchestrator
 from spaiOS.core.screen_capture import capture_jpeg
 from spaiOS.ui import tokens
 from spaiOS.ui.components import InputRow, ResponseView
@@ -16,6 +16,7 @@ class Overlay(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        self._orchestrator = Orchestrator()
         self._active_thread: AskThread | AskWithVisionThread | None = None
         self._fade_in: QPropertyAnimation | None = None
         self._build_window()
@@ -73,6 +74,7 @@ class Overlay(QMainWindow):
     @pyqtSlot()
     def toggle(self) -> None:
         if self.isVisible():
+            self._orchestrator.clear_history()
             self.hide()
         else:
             super().show()
@@ -98,7 +100,7 @@ class Overlay(QMainWindow):
                 prompt, image_bytes
             )
         else:
-            thread = AskThread(prompt)
+            thread = AskThread(prompt, self._orchestrator)
 
         self._active_thread = thread
         self._active_thread.result.connect(self._on_result)
@@ -139,6 +141,7 @@ class Overlay(QMainWindow):
             if self._active_thread is not None:
                 self._cancel_thinking()
             else:
+                self._orchestrator.clear_history()
                 self.hide()
         else:
             super().keyPressEvent(event)

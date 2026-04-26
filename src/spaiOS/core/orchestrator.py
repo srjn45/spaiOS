@@ -23,15 +23,30 @@ def _build_system_prompt(ctx_data: dict) -> str:
 
 
 class Orchestrator:
+    _MAX_HISTORY_PAIRS = 10
+
+    def __init__(self) -> None:
+        self._history: list[dict] = []
+
     def ask(self, prompt: str) -> str:
         ctx_data = ctx.capture()
         system_prompt = _build_system_prompt(ctx_data)
-        messages = []
+        messages: list[dict] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
+        messages.extend(self._history)
         messages.append({"role": "user", "content": prompt})
         response = ollama.chat(model=_MODEL, messages=messages)
-        return response.message.content
+        reply = response.message.content
+        self._history.append({"role": "user", "content": prompt})
+        self._history.append({"role": "assistant", "content": reply})
+        max_msgs = self._MAX_HISTORY_PAIRS * 2
+        if len(self._history) > max_msgs:
+            self._history = self._history[-max_msgs:]
+        return reply
+
+    def clear_history(self) -> None:
+        self._history = []
 
     def ask_with_vision(self, prompt: str, image_bytes: bytes) -> str:
         b64 = base64.b64encode(image_bytes).decode()
@@ -54,10 +69,10 @@ class AskThread(QThread):
     result = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, prompt: str) -> None:
+    def __init__(self, prompt: str, orchestrator: Orchestrator) -> None:
         super().__init__()
         self._prompt = prompt
-        self._orchestrator = Orchestrator()
+        self._orchestrator = orchestrator
 
     def run(self) -> None:
         try:
