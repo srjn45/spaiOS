@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# Config with secrets
+config.toml
+.env
+*.secret
+
+# AI models (too large for git)
+*.gguf
+*.bin
+*.safetensors
+models/
+
+# ChromaDB data
+chroma_db/
+*.chroma
+
+# Screenshots / temp files
+/tmp/spai_screen.png
+*.tmp
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Notion map (generated, not hand-edited)
+docs/notion-map.json
