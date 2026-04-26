@@ -1,6 +1,13 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QWidget
+from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from spaiOS.ui import tokens
 
@@ -49,6 +56,15 @@ _CAM_STYLE_ON = (
     f" border-radius: 8px; color: {tokens.TEXT_PRIMARY}; font-size: {tokens.FONT_SIZE_LG}px; }}"
     f"QPushButton:hover {{ background: rgba(140,120,255,90); }}"
 )
+
+_SHOW_MORE_STYLE = (
+    f"QPushButton {{ background: transparent; border: none;"
+    f" color: {tokens.TEXT_MUTED}; font-size: {tokens.FONT_SIZE_SM}px;"
+    f" text-align: left; padding: 2px 0; }}"
+    f"QPushButton:hover {{ color: {tokens.TEXT_PRIMARY}; }}"
+)
+
+_TRUNCATE_CHARS = 380
 
 _FONT = QFont(tokens.FONT_FAMILY.split(",")[0].strip(), tokens.FONT_SIZE_MD)
 
@@ -114,24 +130,66 @@ class InputRow(QWidget):
         self._input.setPlaceholderText(text)
 
 
-class ResponseView(QTextEdit):
+class ResponseView(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setReadOnly(True)
-        self.setMinimumHeight(100)
-        self.setFont(
-            QFont(tokens.FONT_FAMILY.split(",")[0].strip(), tokens.FONT_SIZE_MD)
-        )
-        self.setStyleSheet(_RESPONSE_STYLE)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        self._text = QTextEdit()
+        self._text.setReadOnly(True)
+        self._text.setMinimumHeight(100)
+        self._text.setFont(_FONT)
+        self._text.setStyleSheet(_RESPONSE_STYLE)
+        layout.addWidget(self._text)
+
+        self._more_btn = QPushButton("Show more ↓")
+        self._more_btn.setStyleSheet(_SHOW_MORE_STYLE)
+        self._more_btn.hide()
+        self._more_btn.clicked.connect(self._toggle_expand)
+        layout.addWidget(self._more_btn)
+
+        self._full_text = ""
+        self._expanded = False
+
+    def _set_content(self, text: str, style: str) -> None:
+        self._text.setStyleSheet(style)
+        self._full_text = text
+        self._expanded = False
+        if len(text) > _TRUNCATE_CHARS:
+            self._text.setPlainText(text[:_TRUNCATE_CHARS] + "…")
+            self._more_btn.setText("Show more ↓")
+            self._more_btn.show()
+        else:
+            self._text.setPlainText(text)
+            self._more_btn.hide()
+
+    def _toggle_expand(self) -> None:
+        if self._expanded:
+            self._text.setPlainText(self._full_text[:_TRUNCATE_CHARS] + "…")
+            self._more_btn.setText("Show more ↓")
+            self._expanded = False
+        else:
+            self._text.setPlainText(self._full_text)
+            self._more_btn.setText("Show less ↑")
+            self._expanded = True
 
     def show_response(self, text: str) -> None:
-        self.setStyleSheet(_RESPONSE_STYLE)
-        self.setPlainText(text)
+        self._set_content(text, _RESPONSE_STYLE)
 
     def show_question(self, text: str) -> None:
-        self.setStyleSheet(_RESPONSE_QUESTION_STYLE)
-        self.setPlainText(text)
+        self._set_content(text, _RESPONSE_QUESTION_STYLE)
 
     def show_error(self, text: str) -> None:
-        self.setStyleSheet(_RESPONSE_ERROR_STYLE)
-        self.setPlainText(text)
+        self._text.setStyleSheet(_RESPONSE_ERROR_STYLE)
+        self._full_text = text
+        self._text.setPlainText(text)
+        self._more_btn.hide()
+        self._expanded = False
+
+    def clear(self) -> None:
+        self._text.clear()
+        self._more_btn.hide()
+        self._full_text = ""
+        self._expanded = False

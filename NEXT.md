@@ -5,18 +5,20 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 4, Session 10
+## Current: Phase 1 — Milestone 5, Session 12
 
-**Goal:** Implement clarifying questions flow — AI can ask a follow-up question mid-task, overlay stays open for the user to answer, and the UI visually distinguishes "AI is asking" from "AI is responding."
+**Goal:** Build File Agent tools standalone — all file management functions implemented and tested directly in Python, sandbox folder populated with 20+ messy test files.
 
 **Steps (in order):**
-1. Detect when the model's reply ends with a `?` (heuristic) or starts with a clarifying phrase — mark it as a "question" response
-2. `src/spaiOS/ui/overlay.py` — when response is a question, show it in a distinct style (e.g., different sphere state or response label color) and keep the input focused/enabled immediately (no 2s delay)
-3. `src/spaiOS/ui/components.py` — add a visual cue on `ResponseView` for "AI asking" vs "AI responding" (different label text or accent color)
-4. Test: ask something ambiguous like "fix the bug" with no file open — AI should ask a clarifying question; answer it; AI should continue with context
+1. Populate `sandbox/` with 20+ messy test files (mixed types, random names, no organization)
+2. `src/spaiOS/agents/file_agent.py` — implement `list_directory`, `create_folder`, `move_file`, `rename_file`, `delete_file`, `read_file_summary`
+3. All paths validated to resolve under `~/spaiOS-sandbox/` (or configured base path)
+4. `delete_file` must always prompt for confirmation before acting — emit a signal or raise an exception that the caller handles; no silent deletes
+5. System paths (`/etc`, `/usr`, `/bin`, `/boot`) hard-blocked regardless of input
+6. Manually test each tool from a Python REPL or short test script
 
-**Notion task:** (create in Notion at session start — next card after Session 9 card)
-**Task doc:** `docs/tasks/2026-04-27-m4-clarifying.md` (create at session start)
+**Notion task:** (create in Notion at session start)
+**Task doc:** `docs/tasks/2026-04-27-m5-file-agent.md` (create at session start)
 
 ---
 

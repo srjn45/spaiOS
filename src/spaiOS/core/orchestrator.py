@@ -78,11 +78,15 @@ class Orchestrator:
 
 
 def _emit_ollama_error(exc: Exception, signal: pyqtSignal) -> None:  # type: ignore[type-arg]
-    msg = str(exc)
-    if "connection" in msg.lower() or "refused" in msg.lower():
+    msg = str(exc).lower()
+    if "connection" in msg or "refused" in msg or "connrefused" in msg:
         signal.emit("Ollama is not running. Start it with: ollama serve")
+    elif ("model" in msg and ("not found" in msg or "404" in msg)) or "pull" in msg:
+        signal.emit(f"Model not found. Run: ollama pull {_MODEL}")
+    elif "timeout" in msg or "timed out" in msg:
+        signal.emit("Request timed out — Ollama may be busy. Try again.")
     else:
-        signal.emit(f"Error: {msg}")
+        signal.emit(f"Error: {str(exc)}")
 
 
 class AskThread(QThread):
