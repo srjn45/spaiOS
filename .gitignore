@@ -37,5 +37,4 @@ chroma_db/
 .DS_Store
 Thumbs.db
 
-# Notion map (generated, not hand-edited)
-docs/notion-map.json
+# Notion map is committed — page IDs are not secrets
