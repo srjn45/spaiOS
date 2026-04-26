@@ -5,17 +5,17 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 3, Session 8
+## Current: Phase 1 — Milestone 4, Session 9
 
-**Goal:** AT-SPI context reader — extract active app name, window title, and selected/visible text from the focused window to inject into the system prompt.
+**Goal:** Upgrade Orchestrator to support conversation history (last 10 turns) and a structured, persistent system prompt — so follow-up questions work and the AI always knows the screen context.
 
 **Steps (in order):**
-1. `src/spaiOS/core/context.py` — new file; `get_window_info() -> dict` via `xdotool getactivewindow getwindowname`; `get_atspi_text(max_chars: int = 2000) -> list[str]` via `pyatspi`; `capture() -> dict` combining all fields
-2. `src/spaiOS/core/orchestrator.py` — `Orchestrator.ask()` calls `context.capture()` and prepends a system prompt with `app_name`, `window_title`, `visible_text`
-3. Test: with a text editor open, ask "what text is on screen?" — verify the response references actual content
+1. `src/spaiOS/core/orchestrator.py` — add `self._history: list[dict]` (max 10 turns); `ask()` builds messages as `[system, *history, user]`, appends both user + assistant turns, trims to last 10 pairs
+2. `src/spaiOS/ui/overlay.py` — wire a "clear history" reset when the overlay is hidden (Super+Space closes it), so next open starts fresh
+3. Test: open VS Code with a Python file, ask "what does this code do?", then ask "any bugs?" — verify second answer references context from the first
 
-**Notion task:** 34e7600e54c781da8290e0c96c87ea64
-**Task doc:** `docs/tasks/2026-04-27-m3-atspi.md` (create at session start)
+**Notion task:** (create in Notion at session start — next card after 34e7600e54c781da8290e0c96c87ea64)
+**Task doc:** `docs/tasks/2026-04-27-m4-history.md` (create at session start)
 
 ---
 
