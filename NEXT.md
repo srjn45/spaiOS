@@ -5,17 +5,18 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 4, Session 9
+## Current: Phase 1 — Milestone 4, Session 10
 
-**Goal:** Upgrade Orchestrator to support conversation history (last 10 turns) and a structured, persistent system prompt — so follow-up questions work and the AI always knows the screen context.
+**Goal:** Implement clarifying questions flow — AI can ask a follow-up question mid-task, overlay stays open for the user to answer, and the UI visually distinguishes "AI is asking" from "AI is responding."
 
 **Steps (in order):**
-1. `src/spaiOS/core/orchestrator.py` — add `self._history: list[dict]` (max 10 turns); `ask()` builds messages as `[system, *history, user]`, appends both user + assistant turns, trims to last 10 pairs
-2. `src/spaiOS/ui/overlay.py` — wire a "clear history" reset when the overlay is hidden (Super+Space closes it), so next open starts fresh
-3. Test: open VS Code with a Python file, ask "what does this code do?", then ask "any bugs?" — verify second answer references context from the first
+1. Detect when the model's reply ends with a `?` (heuristic) or starts with a clarifying phrase — mark it as a "question" response
+2. `src/spaiOS/ui/overlay.py` — when response is a question, show it in a distinct style (e.g., different sphere state or response label color) and keep the input focused/enabled immediately (no 2s delay)
+3. `src/spaiOS/ui/components.py` — add a visual cue on `ResponseView` for "AI asking" vs "AI responding" (different label text or accent color)
+4. Test: ask something ambiguous like "fix the bug" with no file open — AI should ask a clarifying question; answer it; AI should continue with context
 
-**Notion task:** (create in Notion at session start — next card after 34e7600e54c781da8290e0c96c87ea64)
-**Task doc:** `docs/tasks/2026-04-27-m4-history.md` (create at session start)
+**Notion task:** (create in Notion at session start — next card after Session 9 card)
+**Task doc:** `docs/tasks/2026-04-27-m4-clarifying.md` (create at session start)
 
 ---
 
