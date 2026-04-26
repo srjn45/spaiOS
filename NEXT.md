@@ -5,20 +5,20 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 5, Session 12
+## Current: Phase 1 — Milestone 5, Session 13
 
-**Goal:** Build File Agent tools standalone — all file management functions implemented and tested directly in Python, sandbox folder populated with 20+ messy test files.
+**Goal:** Wire File Agent into the Orchestrator — "Organize my sandbox" → AI calls tools → proposes categories → user confirms → files moved.
 
 **Steps (in order):**
-1. Populate `sandbox/` with 20+ messy test files (mixed types, random names, no organization)
-2. `src/spaiOS/agents/file_agent.py` — implement `list_directory`, `create_folder`, `move_file`, `rename_file`, `delete_file`, `read_file_summary`
-3. All paths validated to resolve under `~/spaiOS-sandbox/` (or configured base path)
-4. `delete_file` must always prompt for confirmation before acting — emit a signal or raise an exception that the caller handles; no silent deletes
-5. System paths (`/etc`, `/usr`, `/bin`, `/boot`) hard-blocked regardless of input
-6. Manually test each tool from a Python REPL or short test script
+1. Define Ollama function-calling schemas for all 6 File Agent tools in `src/core/orchestrator.py`
+2. Orchestrator detects tool calls in Ollama response and dispatches to `FileAgent`
+3. Tool result fed back to Ollama for final natural-language response
+4. `delete_file` confirmation flow: when `DeleteConfirmationRequired` is raised, overlay displays a confirmation prompt; user response re-calls `delete_file(confirmed=True)`
+5. Test end-to-end: "list my sandbox files" → AI sees directory listing
+6. Test end-to-end: "organize my sandbox" → AI proposes folders → user confirms → files moved
 
-**Notion task:** (create in Notion at session start)
-**Task doc:** `docs/tasks/2026-04-27-m5-file-agent.md` (create at session start)
+**Notion task:** phase1_m5_file_agent (same task, continuing)
+**Task doc:** `docs/tasks/2026-04-27-m5-orchestrator-routing.md` (create at session start)
 
 ---
 
