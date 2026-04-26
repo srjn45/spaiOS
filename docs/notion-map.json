@@ -14,5 +14,15 @@
   "rfc_004": "34e7600e54c78199834fee5cf49238d4",
   "rfc_005": "34e7600e54c781488fd5eebe2c2ec2d6",
   "task_board_db": "3c12df87dc784935b53278536c93afe5",
-  "session_log_db": "85f6f7917e0f4012b4f3618015cfe6a5"
+  "task_board_data_source": "4966ecdb-2719-4166-a677-00ccea6c4bc9",
+  "session_log_db": "85f6f7917e0f4012b4f3618015cfe6a5",
+  "tasks": {
+    "phase1_m1_environment_setup": "34e7600e54c78140bdd8f41e364d4d1a",
+    "phase1_m2_the_overlay": "34e7600e54c781f3a741d961b4482155",
+    "phase1_m3_the_eyes": "34e7600e54c781da8290e0c96c87ea64",
+    "phase1_m4_the_brain": "34e7600e54c781f89f01d0904466bbe4",
+    "phase1_m5_file_agent": "34e7600e54c781c3a8ddd0cf79bc8cc8",
+    "phase1_m6_demo_polish": "34e7600e54c781c69f61ecc13d25c4ff",
+    "phase1_m7_wrap": "34e7600e54c781519921cf273d653ac8"
+  }
 }

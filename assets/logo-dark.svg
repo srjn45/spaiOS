@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120" width="420" height="120" role="img" aria-label="spaiOS logo — dark variant">
+  <defs>
+    <radialGradient id="sphereCoreDark" cx="38%" cy="32%" r="68%">
+      <stop offset="0%"   stop-color="#C0EEFF"/>
+      <stop offset="28%"  stop-color="#3090FF"/>
+      <stop offset="68%"  stop-color="#0B46CC"/>
+      <stop offset="100%" stop-color="#060F4A"/>
+    </radialGradient>
+
+    <radialGradient id="haloDark" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#00D4FF" stop-opacity="0.32"/>
+      <stop offset="50%"  stop-color="#2060FF" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#001080" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="bgRadial" cx="28%" cy="35%" r="75%">
+      <stop offset="0%"   stop-color="#0D1A3A"/>
+      <stop offset="100%" stop-color="#060C1C"/>
+    </radialGradient>
+
+    <radialGradient id="nodeGradD" cx="35%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#90F4FF"/>
+      <stop offset="100%" stop-color="#00A0E0"/>
+    </radialGradient>
+
+    <radialGradient id="nodeGradTealD" cx="35%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#B0FFE8"/>
+      <stop offset="100%" stop-color="#00CCA0"/>
+    </radialGradient>
+
+    <radialGradient id="nodeGradVioletD" cx="35%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#D0C8FF"/>
+      <stop offset="100%" stop-color="#7050E8"/>
+    </radialGradient>
+
+    <filter id="sphereGlowD" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="nodeGlowD" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- ── Background card ── -->
+  <rect x="0" y="0" width="420" height="120" rx="12" fill="url(#bgRadial)"/>
+  <!-- Subtle top border highlight -->
+  <rect x="0" y="0" width="420" height="1" rx="0" fill="#1E3060" fill-opacity="0.8"/>
+
+  <!-- ── Halo ── -->
+  <circle cx="60" cy="60" r="56" fill="url(#haloDark)"/>
+
+  <!-- ── Orbit rings ── -->
+  <ellipse cx="60" cy="60" rx="46" ry="11"
+           fill="none" stroke="#00D8FF" stroke-width="0.8" stroke-opacity="0.35"
+           stroke-dasharray="4 3"/>
+  <ellipse cx="60" cy="60" rx="11" ry="46"
+           fill="none" stroke="#6070FF" stroke-width="0.8" stroke-opacity="0.28"
+           stroke-dasharray="4 3"/>
+
+  <!-- ── Spoke lines ── -->
+  <line x1="60" y1="60" x2="104" y2="60"  stroke="#00D8FF" stroke-width="0.7" stroke-opacity="0.35"/>
+  <line x1="60" y1="60" x2="91"  y2="29"  stroke="#00D8FF" stroke-width="0.7" stroke-opacity="0.28"/>
+  <line x1="60" y1="60" x2="60"  y2="16"  stroke="#00D8FF" stroke-width="0.7" stroke-opacity="0.35"/>
+  <line x1="60" y1="60" x2="29"  y2="29"  stroke="#00D8FF" stroke-width="0.7" stroke-opacity="0.28"/>
+  <line x1="60" y1="60" x2="16"  y2="60"  stroke="#00D8FF" stroke-width="0.7" stroke-opacity="0.35"/>
+  <line x1="60" y1="60" x2="29"  y2="91"  stroke="#00D8FF" stroke-width="0.7" stroke-opacity="0.28"/>
+  <line x1="60" y1="60" x2="60"  y2="104" stroke="#00D8FF" stroke-width="0.7" stroke-opacity="0.35"/>
+  <line x1="60" y1="60" x2="91"  y2="91"  stroke="#00D8FF" stroke-width="0.7" stroke-opacity="0.28"/>
+
+  <!-- ── 8 Orbital nodes ── -->
+  <circle cx="104" cy="60"  r="4.2" fill="url(#nodeGradD)"       filter="url(#nodeGlowD)"/>
+  <circle cx="91"  cy="29"  r="3.4" fill="url(#nodeGradTealD)"   filter="url(#nodeGlowD)"/>
+  <circle cx="60"  cy="16"  r="4.2" fill="url(#nodeGradD)"       filter="url(#nodeGlowD)"/>
+  <circle cx="29"  cy="29"  r="3.4" fill="url(#nodeGradVioletD)" filter="url(#nodeGlowD)"/>
+  <circle cx="16"  cy="60"  r="4.2" fill="url(#nodeGradD)"       filter="url(#nodeGlowD)"/>
+  <circle cx="29"  cy="91"  r="3.4" fill="url(#nodeGradTealD)"   filter="url(#nodeGlowD)"/>
+  <circle cx="60"  cy="104" r="4.2" fill="url(#nodeGradD)"       filter="url(#nodeGlowD)"/>
+  <circle cx="91"  cy="91"  r="3.4" fill="url(#nodeGradVioletD)" filter="url(#nodeGlowD)"/>
+
+  <!-- ── Central sphere ── -->
+  <circle cx="60" cy="60" r="29" fill="url(#sphereCoreDark)" filter="url(#sphereGlowD)"/>
+  <ellipse cx="52" cy="50" rx="9.5" ry="7.5"
+           fill="white" fill-opacity="0.22" transform="rotate(-20 52 50)"/>
+  <circle cx="54" cy="51" r="4" fill="white" fill-opacity="0.32"/>
+
+  <!-- ── Wordmark ── -->
+  <text x="138" y="56"
+        font-family="'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+        font-size="38" font-weight="700" letter-spacing="-1.5"
+        fill="#F0F6FF">spai<tspan fill="#00D8FF">OS</tspan></text>
+
+  <text x="140" y="78"
+        font-family="'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+        font-size="11.5" font-weight="400" letter-spacing="3.5"
+        fill="#4A6090">AI OPERATING SYSTEM</text>
+</svg>
