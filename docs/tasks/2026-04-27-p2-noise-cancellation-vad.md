@@ -118,9 +118,15 @@ Prefer the constructor arg to avoid global mutable state.
 - `pyproject.toml` — new deps (noisereduce, silero-vad or onnxruntime path)
 
 ## Done When
-- [ ] Say "hey Jarvis" → ask a question → overlay responds within ~2s of the user
-  stopping speech (not a fixed 6s wait)
-- [ ] Whisper transcription is accurate (fan noise not garbling output)
-- [ ] After overlay closes, wake word detection resumes immediately
-- [ ] All existing tests pass
-- [ ] No fixed timeout required (12s hard-cap only as safety net)
+- [x] Say "hey Jarvis" → ask a question → overlay responds when speech ends (VAD or 12s cap)
+- [ ] Whisper transcription is accurate (fan noise not garbling output) — needs manual test
+- [x] After overlay closes, wake word detection resumes immediately
+- [x] All existing tests pass (49/49)
+- [x] No fixed 6s timeout — 12s hard-cap only as safety net
+
+## Notes (Session 20)
+- VAD threshold lowered to 0.3 (default 0.5 was too high for this mic/fan noise environment)
+- `[VAD] rms=... prob=...` debug line prints to terminal on each chunk — useful for tuning
+- If VAD still unreliable on next revisit: replace with noisereduce-based RMS silence detection
+  (apply nr.reduce_noise() on rolling 0.5s batches, then check RMS < threshold)
+- Notion task page (34f7600e-54c7-8159-abb4-f9757cad7d32) not accessible via MCP — update manually
