@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from spaiOS.core.voice import SilenceDetector, vosk_model_path
+from spaiOS.core.voice import SilenceDetector, SileroVAD, vosk_model_path
 
 _SR = 16000  # sample rate used throughout
 
@@ -79,3 +79,67 @@ def test_vosk_model_path_under_local_share():
 def test_vosk_model_path_contains_model_name():
     path = vosk_model_path()
     assert "vosk-model-small-en-us" in str(path)
+
+
+# ── noisereduce ───────────────────────────────────────────────────────────────
+
+def test_noisereduce_reduces_rms():
+    """noisereduce should substantially lower RMS of a pure-noise signal when
+    the noise profile is an identical sample of that same stationary noise."""
+    import noisereduce as nr
+
+    rng = np.random.default_rng(42)
+    # Stationary white noise (simulates constant fan noise)
+    noise = rng.normal(0, 0.05, _SR * 2).astype(np.float32)
+    noise_profile = noise[: _SR]  # first half is the "ambient calibration"
+    signal = noise[_SR:]           # second half is what we want to clean
+
+    cleaned = nr.reduce_noise(y=signal, sr=_SR, y_noise=noise_profile)
+
+    assert cleaned.shape == signal.shape
+    rms_before = float(np.sqrt(np.mean(signal**2)))
+    rms_after = float(np.sqrt(np.mean(cleaned**2)))
+    assert rms_after < rms_before * 0.8, (
+        f"noisereduce should reduce noise RMS by >20%; "
+        f"before={rms_before:.4f}, after={rms_after:.4f}"
+    )
+
+
+# ── SileroVAD ─────────────────────────────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def vad():
+    """Load SileroVAD once per module (downloads model if not cached)."""
+    return SileroVAD()
+
+
+def test_silero_vad_silence_scores_low(vad):
+    """Pure silence should score below 0.5."""
+    vad.reset()
+    chunk = np.zeros(512, dtype=np.float32)
+    scores = [vad.predict(chunk) for _ in range(5)]
+    assert all(s < 0.5 for s in scores), f"Silence scores too high: {scores}"
+
+
+def test_silero_vad_outputs_valid_probability(vad):
+    """predict() must return a float in [0, 1] for any input."""
+    vad.reset()
+    rng = np.random.default_rng(7)
+    for _ in range(8):
+        chunk = rng.normal(0, 0.1, 512).astype(np.float32)
+        prob = vad.predict(chunk)
+        assert 0.0 <= prob <= 1.0, f"Probability out of range: {prob}"
+
+
+def test_silero_vad_reset_clears_state(vad):
+    """After reset(), state should behave as freshly initialised."""
+    t = np.arange(512) / _SR
+    tone = (0.4 * np.sin(2 * np.pi * 400 * t)).astype(np.float32)
+    # Prime with speech
+    for _ in range(10):
+        vad.predict(tone)
+    vad.reset()
+    # After reset, a few silence chunks should score low
+    chunk = np.zeros(512, dtype=np.float32)
+    scores = [vad.predict(chunk) for _ in range(3)]
+    assert all(s < 0.5 for s in scores), f"Scores after reset too high: {scores}"
