@@ -1,15 +1,17 @@
+import numpy as np
 from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QWidget, QVBoxLayout
 
 from spaiOS.core.orchestrator import AskThread, AskWithVisionThread, Orchestrator
 from spaiOS.core.orchestrator import is_clarifying_question
 from spaiOS.core.screen_capture import capture_jpeg
-from spaiOS.core.voice import VoiceRecorder, VoiceTranscribeThread
+from spaiOS.core.voice import AudioTranscribeThread, VoiceRecorder, VoiceTranscribeThread
 from spaiOS.ui import tokens
 from spaiOS.ui.components import InputRow, ResponseView
 from spaiOS.ui.neural_sphere import NeuralSphere
 
 _FADE_MS = 200
+_IDLE_DISMISS_MS = 30_000  # hide after 30s of no activity
 
 
 class Overlay(QMainWindow):
@@ -21,8 +23,12 @@ class Overlay(QMainWindow):
         self._orchestrator = Orchestrator()
         self._active_thread: AskThread | AskWithVisionThread | None = None
         self._voice_recorder = VoiceRecorder()
-        self._voice_thread: VoiceTranscribeThread | None = None
+        self._voice_thread: VoiceTranscribeThread | AudioTranscribeThread | None = None
         self._fade_in: QPropertyAnimation | None = None
+        self._idle_timer = QTimer(self)
+        self._idle_timer.setSingleShot(True)
+        self._idle_timer.setInterval(_IDLE_DISMISS_MS)
+        self._idle_timer.timeout.connect(self._on_idle_timeout)
         self._build_window()
         self._center_on_screen()
 
@@ -85,10 +91,20 @@ class Overlay(QMainWindow):
         anim.start()
         self._fade_in = anim
 
+    def _reset_idle_timer(self) -> None:
+        if self.isVisible():
+            self._idle_timer.start()
+
+    def _on_idle_timeout(self) -> None:
+        if self._active_thread is None and self._voice_thread is None:
+            self._orchestrator.clear_history()
+            self.hide()
+
     @pyqtSlot()
     def toggle(self) -> None:
         if self.isVisible():
             self._orchestrator.clear_history()
+            self._idle_timer.stop()
             self.hide()
         else:
             super().show()
@@ -96,8 +112,11 @@ class Overlay(QMainWindow):
             self.raise_()
             self.activateWindow()
             self._input_row.focus()
+            self._reset_idle_timer()
 
     def _on_prompt_submitted(self, prompt: str) -> None:
+        self._idle_timer.stop()
+
         if prompt.strip().lower() == "/clear":
             self._orchestrator.clear_history()
             self._input_row.clear()
@@ -105,6 +124,7 @@ class Overlay(QMainWindow):
             self._response_view.show_response("Context cleared — starting fresh.")
             self._input_row.set_enabled(True)
             self._input_row.focus()
+            self._reset_idle_timer()
             return
 
         self._input_row.set_enabled(False)
@@ -140,10 +160,12 @@ class Overlay(QMainWindow):
             self._sphere.set_state("responding")
             self._response_view.show_response(text)
             QTimer.singleShot(2000, lambda: self._sphere.set_state("idle"))
+        self._reset_idle_timer()
 
     def _on_error(self, msg: str) -> None:
         self._sphere.set_state("idle")
         self._response_view.show_error(msg)
+        self._reset_idle_timer()
 
     def _on_thread_finished(self) -> None:
         self._input_row.set_enabled(True)
@@ -179,6 +201,7 @@ class Overlay(QMainWindow):
             self._response_view.show_error("No speech detected — try again.")
             self._input_row.set_enabled(True)
             self._input_row.focus()
+            self._reset_idle_timer()
             return
         self._on_prompt_submitted(text)
 
@@ -187,6 +210,7 @@ class Overlay(QMainWindow):
         self._response_view.show_error(msg)
         self._input_row.set_enabled(True)
         self._input_row.focus()
+        self._reset_idle_timer()
 
     def _on_voice_thread_done(self) -> None:
         self._voice_thread = None
@@ -204,24 +228,19 @@ class Overlay(QMainWindow):
             self._start_fade_in()
             self.raise_()
             self.activateWindow()
-        if self._active_thread is not None:
-            return
-        try:
-            self._voice_recorder.start()
-        except Exception as exc:
-            self._on_error(f"Microphone error: {exc}")
-            return
+        self._idle_timer.stop()
         self._sphere.set_state("listening")
-        self._response_view.show_response("Listening… speak now")
+        self._response_view.show_response("Listening… speak now (auto-transcribes in 6s)")
         self._input_row.set_enabled(False)
 
-    @pyqtSlot()
-    def on_utterance_end(self) -> None:
-        if not self._voice_recorder.is_recording:
+    @pyqtSlot(object)
+    def on_wake_audio_ready(self, audio: object) -> None:
+        print(f"[spaiOS] on_wake_audio_ready received, type={type(audio)}")
+        if not isinstance(audio, np.ndarray):
             return
         self._sphere.set_state("thinking")
         self._response_view.show_response("Transcribing…")
-        thread = VoiceTranscribeThread(self._voice_recorder)
+        thread = AudioTranscribeThread(audio)
         self._voice_thread = thread
         thread.result.connect(self._on_voice_result)
         thread.error.connect(self._on_voice_error)
@@ -240,6 +259,7 @@ class Overlay(QMainWindow):
         self._sphere.set_state("idle")
         self._input_row.set_enabled(True)
         self._input_row.focus()
+        self._reset_idle_timer()
 
     def keyPressEvent(self, event: QEvent) -> None:  # type: ignore[override]
         if event.key() == Qt.Key.Key_Escape:
@@ -247,6 +267,7 @@ class Overlay(QMainWindow):
                 self._cancel_thinking()
             else:
                 self._orchestrator.clear_history()
+                self._idle_timer.stop()
                 self.hide()
         else:
             super().keyPressEvent(event)

@@ -26,7 +26,7 @@ def main() -> None:
 
     wake_listener = WakeWordListener()
     wake_listener.wake.connect(overlay.on_wake_word)
-    wake_listener.utterance_end.connect(overlay.on_utterance_end)
+    wake_listener.audio_ready.connect(overlay.on_wake_audio_ready)
     wake_listener.start()
     overlay.set_wake_listener_active(True)
 

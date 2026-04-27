@@ -1,45 +1,9 @@
 import numpy as np
 import pytest
 
-from spaiOS.core.voice import SilenceDetector, is_wake_phrase, vosk_model_path
+from spaiOS.core.voice import SilenceDetector, vosk_model_path
 
 _SR = 16000  # sample rate used throughout
-
-
-# ── is_wake_phrase ─────────────────────────────────────────────────────────────
-
-def test_exact_wake_phrase_matches():
-    assert is_wake_phrase("hey spaios") is True
-
-
-def test_wake_phrase_case_insensitive():
-    assert is_wake_phrase("Hey SpaiOS") is True
-    assert is_wake_phrase("HEY SPAIOS") is True
-
-
-def test_unrelated_phrase_does_not_match():
-    assert is_wake_phrase("hello there") is False
-
-
-def test_partial_wake_phrase_does_not_match():
-    assert is_wake_phrase("spaios") is False
-
-
-def test_wake_phrase_embedded_at_start():
-    assert is_wake_phrase("hey spaios what time is it") is True
-
-
-def test_vosk_variant_spa_ios_matches():
-    assert is_wake_phrase("hey spa ios") is True
-
-
-def test_vosk_variant_space_ios_matches():
-    assert is_wake_phrase("hey space ios") is True
-
-
-def test_vosk_variant_spy_os_does_not_match():
-    # too different — don't accept arbitrary mis-transcriptions
-    assert is_wake_phrase("hey spy os") is False
 
 
 # ── SilenceDetector ────────────────────────────────────────────────────────────
