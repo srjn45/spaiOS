@@ -224,9 +224,7 @@ class Orchestrator:
         loop_messages = list(messages)
 
         for _ in range(_TOOL_LOOP_LIMIT):
-            response = ollama.chat(
-                model=_MODEL, messages=loop_messages, tools=_FILE_TOOLS
-            )
+            response = ollama.chat(model=_MODEL, messages=loop_messages, tools=_FILE_TOOLS)
             msg = response.message
 
             if not msg.tool_calls:
@@ -236,9 +234,7 @@ class Orchestrator:
             loop_messages.append(msg)
 
             for tc in msg.tool_calls:
-                result = self._dispatch_tool(
-                    tc.function.name, tc.function.arguments or {}
-                )
+                result = self._dispatch_tool(tc.function.name, tc.function.arguments or {})
                 loop_messages.append({"role": "tool", "content": result})
 
                 if self._pending_delete is not None:
