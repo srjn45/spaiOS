@@ -19,7 +19,9 @@ def main() -> None:
         QMetaObject.invokeMethod(overlay, "toggle", Qt.ConnectionType.QueuedConnection)
 
     def _voice_safe() -> None:
-        QMetaObject.invokeMethod(overlay, "toggle_voice", Qt.ConnectionType.QueuedConnection)
+        QMetaObject.invokeMethod(
+            overlay, "toggle_voice", Qt.ConnectionType.QueuedConnection
+        )
 
     hotkey = HotkeyListener(_toggle_safe, _voice_safe)
     hotkey.start()
