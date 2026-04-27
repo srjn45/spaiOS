@@ -1,5 +1,5 @@
 from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, QTimer, pyqtSlot
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QMainWindow, QWidget, QVBoxLayout
 
 from spaiOS.core.orchestrator import AskThread, AskWithVisionThread, Orchestrator
 from spaiOS.core.orchestrator import is_clarifying_question
@@ -46,6 +46,16 @@ class Overlay(QMainWindow):
 
         self._sphere = NeuralSphere()
         layout.addWidget(self._sphere)
+
+        # mic indicator: small dot shown when wake word listener is active
+        self._mic_dot = QLabel("⬤")
+        self._mic_dot.setStyleSheet("color: rgba(60, 220, 130, 180); font-size: 8px; padding: 0;")
+        self._mic_dot.setToolTip("Wake word listener active")
+        self._mic_dot.hide()
+        dot_row = QHBoxLayout()
+        dot_row.addStretch()
+        dot_row.addWidget(self._mic_dot)
+        layout.addLayout(dot_row)
 
         self._input_row = InputRow()
         self._input_row.submitted.connect(self._on_prompt_submitted)
@@ -110,9 +120,7 @@ class Overlay(QMainWindow):
                 self._input_row.set_enabled(True)
                 self._input_row.focus()
                 return
-            thread: AskThread | AskWithVisionThread = AskWithVisionThread(
-                prompt, image_bytes
-            )
+            thread: AskThread | AskWithVisionThread = AskWithVisionThread(prompt, image_bytes)
         else:
             thread = AskThread(prompt, self._orchestrator)
 
@@ -162,9 +170,7 @@ class Overlay(QMainWindow):
                 self._on_error(f"Microphone error: {exc}")
                 return
             self._sphere.set_state("listening")
-            self._response_view.show_response(
-                "Listening… press Super+Shift+Space again to stop"
-            )
+            self._response_view.show_response("Listening… press Super+Shift+Space again to stop")
             self._input_row.set_enabled(False)
 
     def _on_voice_result(self, text: str) -> None:
@@ -184,6 +190,43 @@ class Overlay(QMainWindow):
 
     def _on_voice_thread_done(self) -> None:
         self._voice_thread = None
+
+    def set_wake_listener_active(self, active: bool) -> None:
+        if active:
+            self._mic_dot.show()
+        else:
+            self._mic_dot.hide()
+
+    @pyqtSlot()
+    def on_wake_word(self) -> None:
+        if not self.isVisible():
+            super().show()
+            self._start_fade_in()
+            self.raise_()
+            self.activateWindow()
+        if self._active_thread is not None:
+            return
+        try:
+            self._voice_recorder.start()
+        except Exception as exc:
+            self._on_error(f"Microphone error: {exc}")
+            return
+        self._sphere.set_state("listening")
+        self._response_view.show_response("Listening… speak now")
+        self._input_row.set_enabled(False)
+
+    @pyqtSlot()
+    def on_utterance_end(self) -> None:
+        if not self._voice_recorder.is_recording:
+            return
+        self._sphere.set_state("thinking")
+        self._response_view.show_response("Transcribing…")
+        thread = VoiceTranscribeThread(self._voice_recorder)
+        self._voice_thread = thread
+        thread.result.connect(self._on_voice_result)
+        thread.error.connect(self._on_voice_error)
+        thread.finished.connect(self._on_voice_thread_done)
+        thread.start()
 
     def _cancel_thinking(self) -> None:
         if self._active_thread is not None:

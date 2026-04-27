@@ -4,6 +4,7 @@ from PyQt6.QtCore import QMetaObject, Qt
 from PyQt6.QtWidgets import QApplication
 
 from spaiOS.core.hotkey import HotkeyListener
+from spaiOS.core.voice import WakeWordListener
 from spaiOS.ui.overlay import Overlay
 
 
@@ -18,15 +19,20 @@ def main() -> None:
         QMetaObject.invokeMethod(overlay, "toggle", Qt.ConnectionType.QueuedConnection)
 
     def _voice_safe() -> None:
-        QMetaObject.invokeMethod(
-            overlay, "toggle_voice", Qt.ConnectionType.QueuedConnection
-        )
+        QMetaObject.invokeMethod(overlay, "toggle_voice", Qt.ConnectionType.QueuedConnection)
 
     hotkey = HotkeyListener(_toggle_safe, _voice_safe)
     hotkey.start()
 
+    wake_listener = WakeWordListener()
+    wake_listener.wake.connect(overlay.on_wake_word)
+    wake_listener.utterance_end.connect(overlay.on_utterance_end)
+    wake_listener.start()
+    overlay.set_wake_listener_active(True)
+
     print(
-        "[spaiOS] Running — Super+Space to show overlay, Super+Shift+Space for voice."
+        "[spaiOS] Running — Super+Space to show overlay, Super+Shift+Space for voice.\n"
+        "[spaiOS] Wake word listener active — say 'hey spaiOS' to start."
     )
     sys.exit(app.exec())
 
