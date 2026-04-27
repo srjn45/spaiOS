@@ -11,6 +11,7 @@ from spaiOS.ui.tokens import (
     SPHERE_THINKING_COLOR,
     SPHERE_RESPONDING_COLOR,
     SPHERE_QUESTIONING_COLOR,
+    SPHERE_LISTENING_COLOR,
 )
 
 # ── Sphere geometry (built once at import) ─────────────────────────────────────
@@ -49,6 +50,7 @@ _IDLE = "idle"
 _THINKING = "thinking"
 _RESPONDING = "responding"
 _QUESTIONING = "questioning"
+_LISTENING = "listening"
 
 _TICK_MS = 50
 _X_TILT = 0.12  # fixed X-axis tilt (radians) — matches logo orientation
@@ -114,7 +116,7 @@ class NeuralSphere(QWidget):
     # ── Public API ─────────────────────────────────────────────────────────────
 
     def set_state(self, state: str) -> None:
-        if state not in (_IDLE, _THINKING, _RESPONDING, _QUESTIONING):
+        if state not in (_IDLE, _THINKING, _RESPONDING, _QUESTIONING, _LISTENING):
             return
         self._state = state
         if state == _RESPONDING:
@@ -131,6 +133,7 @@ class NeuralSphere(QWidget):
             _THINKING: 0.022,
             _RESPONDING: 0.010,
             _QUESTIONING: 0.007,
+            _LISTENING: 0.016,
         }[self._state]
         self._angle_y = (self._angle_y + rot_speed) % (2 * math.pi)
         self._nodes = _rotate(_NODES_BASE, self._angle_y, _X_TILT)
@@ -144,6 +147,7 @@ class NeuralSphere(QWidget):
             _THINKING: SPHERE_THINKING_COLOR,
             _RESPONDING: SPHERE_RESPONDING_COLOR,
             _QUESTIONING: SPHERE_QUESTIONING_COLOR,
+            _LISTENING: SPHERE_LISTENING_COLOR,
         }[self._state]
         s = 0.06
         self._glow_r = _lerp(self._glow_r, float(tr), s)
@@ -156,6 +160,7 @@ class NeuralSphere(QWidget):
             _THINKING: 0.050,
             _RESPONDING: 0.0,
             _QUESTIONING: 0.018,
+            _LISTENING: 0.035,
         }[self._state]
         for i, (x3, y3, z3) in enumerate(self._nodes):
             if self._cooldown[i] > 0:

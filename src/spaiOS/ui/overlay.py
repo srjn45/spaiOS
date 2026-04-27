@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout
 from spaiOS.core.orchestrator import AskThread, AskWithVisionThread, Orchestrator
 from spaiOS.core.orchestrator import is_clarifying_question
 from spaiOS.core.screen_capture import capture_jpeg
+from spaiOS.core.voice import VoiceRecorder, VoiceTranscribeThread
 from spaiOS.ui import tokens
 from spaiOS.ui.components import InputRow, ResponseView
 from spaiOS.ui.neural_sphere import NeuralSphere
@@ -19,6 +20,8 @@ class Overlay(QMainWindow):
         super().__init__()
         self._orchestrator = Orchestrator()
         self._active_thread: AskThread | AskWithVisionThread | None = None
+        self._voice_recorder = VoiceRecorder()
+        self._voice_thread: VoiceTranscribeThread | None = None
         self._fade_in: QPropertyAnimation | None = None
         self._build_window()
         self._center_on_screen()
@@ -138,6 +141,49 @@ class Overlay(QMainWindow):
         self._input_row.set_enabled(True)
         self._input_row.focus()
         self._active_thread = None
+
+    @pyqtSlot()
+    def toggle_voice(self) -> None:
+        if self._voice_recorder.is_recording:
+            self._sphere.set_state("thinking")
+            self._response_view.show_response("Transcribing…")
+            thread = VoiceTranscribeThread(self._voice_recorder)
+            self._voice_thread = thread
+            thread.result.connect(self._on_voice_result)
+            thread.error.connect(self._on_voice_error)
+            thread.finished.connect(self._on_voice_thread_done)
+            thread.start()
+        else:
+            if self._active_thread is not None:
+                return
+            try:
+                self._voice_recorder.start()
+            except Exception as exc:
+                self._on_error(f"Microphone error: {exc}")
+                return
+            self._sphere.set_state("listening")
+            self._response_view.show_response(
+                "Listening… press Super+Shift+Space again to stop"
+            )
+            self._input_row.set_enabled(False)
+
+    def _on_voice_result(self, text: str) -> None:
+        if not text.strip():
+            self._sphere.set_state("idle")
+            self._response_view.show_error("No speech detected — try again.")
+            self._input_row.set_enabled(True)
+            self._input_row.focus()
+            return
+        self._on_prompt_submitted(text)
+
+    def _on_voice_error(self, msg: str) -> None:
+        self._sphere.set_state("idle")
+        self._response_view.show_error(msg)
+        self._input_row.set_enabled(True)
+        self._input_row.focus()
+
+    def _on_voice_thread_done(self) -> None:
+        self._voice_thread = None
 
     def _cancel_thinking(self) -> None:
         if self._active_thread is not None:

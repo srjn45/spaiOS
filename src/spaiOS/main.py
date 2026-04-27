@@ -13,14 +13,21 @@ def main() -> None:
 
     overlay = Overlay()
 
-    # pynput fires on a daemon thread; route the call onto the Qt main thread.
+    # pynput fires on daemon threads; route all calls onto the Qt main thread.
     def _toggle_safe() -> None:
         QMetaObject.invokeMethod(overlay, "toggle", Qt.ConnectionType.QueuedConnection)
 
-    hotkey = HotkeyListener(_toggle_safe)
+    def _voice_safe() -> None:
+        QMetaObject.invokeMethod(
+            overlay, "toggle_voice", Qt.ConnectionType.QueuedConnection
+        )
+
+    hotkey = HotkeyListener(_toggle_safe, _voice_safe)
     hotkey.start()
 
-    print("[spaiOS] Running — Super+Space to show overlay, Esc to dismiss.")
+    print(
+        "[spaiOS] Running — Super+Space to show overlay, Super+Shift+Space for voice."
+    )
     sys.exit(app.exec())
 
 

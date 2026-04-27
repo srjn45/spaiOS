@@ -5,25 +5,25 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 1, Session 17
+## Current: Phase 2 — Milestone 1, Session 18
 
-**Goal:** Begin Phase 2 — Voice Activation. Get `faster-whisper` transcription working
-end-to-end: record audio on push-to-talk (`Super+Shift+Space`), transcribe, and send the
-transcript to the existing Orchestrator as if the user had typed it.
+**Goal:** Add always-on wake word detection. Background thread listens continuously for
+"hey spaiOS" using vosk (offline), then activates the overlay and starts recording without
+requiring a keyboard hotkey.
 
 **Steps (in order):**
-1. Read `docs/phases/2026-04-26-phase-2-the-reach.md` — understand Phase 2 scope
-2. Create task doc: `docs/tasks/YYYY-MM-DD-p2-voice-ptt.md`
-3. Add `faster-whisper` and `sounddevice` to `pyproject.toml` dependencies
-4. Implement `src/spaiOS/core/voice.py` — push-to-talk recording + transcription
-5. Wire `Super+Shift+Space` hotkey in `hotkey.py` → start/stop recording
-6. Overlay shows "Listening…" sphere state during recording
-7. Transcript feeds into `Orchestrator.ask()` on key-release
-8. Manual test: press hotkey, speak, verify transcription appears in overlay
-9. Sync docs to Notion, commit
+1. Create task doc: `docs/tasks/YYYY-MM-DD-p2-wake-word.md`
+2. Add `vosk` to `pyproject.toml`; download vosk small model (~50MB)
+3. Implement wake word listener in `src/spaiOS/core/voice.py` — background thread,
+   uses vosk to detect "hey spaiOS", fires callback on match
+4. Add microphone privacy indicator to overlay (small dot in corner when mic active)
+5. Wire wake word callback in `main.py` → show overlay + start recording
+6. End-of-utterance detection: 1.5s silence → stop recording + transcribe
+7. Manual test: say "hey spaiOS, what time is it?" without touching keyboard
+8. Sync docs to Notion, commit
 
-**Notion task:** phase2_m1_voice_ptt
-**Task doc:** `docs/tasks/YYYY-MM-DD-p2-voice-ptt.md` (create at session start)
+**Notion task:** phase2_m1_voice_pipeline
+**Task doc:** `docs/tasks/YYYY-MM-DD-p2-wake-word.md` (create at session start)
 
 ---
 
