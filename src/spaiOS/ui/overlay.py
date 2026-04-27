@@ -66,9 +66,7 @@ class Overlay(QMainWindow):
 
         # mic indicator: small dot shown when wake word listener is active
         self._mic_dot = QLabel("⬤")
-        self._mic_dot.setStyleSheet(
-            "color: rgba(60, 220, 130, 180); font-size: 8px; padding: 0;"
-        )
+        self._mic_dot.setStyleSheet("color: rgba(60, 220, 130, 180); font-size: 8px; padding: 0;")
         self._mic_dot.setToolTip("Wake word listener active")
         self._mic_dot.hide()
         dot_row = QHBoxLayout()
@@ -153,9 +151,7 @@ class Overlay(QMainWindow):
                 self._input_row.set_enabled(True)
                 self._input_row.focus()
                 return
-            thread: AskThread | AskWithVisionThread = AskWithVisionThread(
-                prompt, image_bytes
-            )
+            thread: AskThread | AskWithVisionThread = AskWithVisionThread(prompt, image_bytes)
         else:
             thread = AskThread(prompt, self._orchestrator)
 
@@ -207,9 +203,7 @@ class Overlay(QMainWindow):
                 self._on_error(f"Microphone error: {exc}")
                 return
             self._sphere.set_state("listening")
-            self._response_view.show_response(
-                "Listening… press Super+Shift+Space again to stop"
-            )
+            self._response_view.show_response("Listening… press Super+Shift+Space again to stop")
             self._input_row.set_enabled(False)
 
     def _on_voice_result(self, text: str) -> None:
@@ -247,9 +241,7 @@ class Overlay(QMainWindow):
             self.activateWindow()
         self._idle_timer.stop()
         self._sphere.set_state("listening")
-        self._response_view.show_response(
-            "Listening… speak now (auto-detects end of speech)"
-        )
+        self._response_view.show_response("Listening… speak now (auto-detects end of speech)")
         self._input_row.set_enabled(False)
 
     @pyqtSlot(object, object)

@@ -36,11 +36,12 @@ _BASE_SYSTEM_PROMPT = (
     "The user has a personal file sandbox at ~/spaiOS-sandbox/ on their Linux machine. "
     "You have tools to manage that directory: list_directory, read_file_summary, "
     "create_folder, move_file, rename_file, delete_file. "
-    "You also have Chrome browser tools: open_url, get_current_url, get_page_content. "
+    "You also have Chrome browser tools: open_url, search_web, get_current_url, get_page_content. "
     "IMPORTANT: For any request involving files, folders, listing, organizing, moving, "
     "renaming, deleting, or reading — you MUST call the appropriate tool immediately. "
     "For any request to open a website, navigate to a URL, or go to a page — "
     "call open_url immediately. "
+    "For any request to search for something on the web — call search_web immediately. "
     "For any request to read or summarize what's on the current page — call get_page_content. "
     "Do not describe what you would do. Just call the tool."
 )
@@ -214,6 +215,26 @@ _CHROME_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "search_web",
+            "description": (
+                "Search Google for a query and navigate Chrome to the results. "
+                "Use when the user says 'search for', 'look up', 'find', or 'google X'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query, e.g. 'lo-fi beats'.",
+                    }
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_current_url",
             "description": "Return the URL currently loaded in the active Chrome tab.",
             "parameters": {"type": "object", "properties": {}, "required": []},
@@ -300,9 +321,7 @@ class Orchestrator:
             loop_messages.append(msg)
 
             for tc in msg.tool_calls:
-                result = self._dispatch_tool(
-                    tc.function.name, tc.function.arguments or {}
-                )
+                result = self._dispatch_tool(tc.function.name, tc.function.arguments or {})
                 loop_messages.append({"role": "tool", "content": result})
 
                 if self._pending_delete is not None:
@@ -337,6 +356,8 @@ class Orchestrator:
                 return summary
             if name == "open_url":
                 return self._chrome_agent.open_url(args["url"])
+            if name == "search_web":
+                return self._chrome_agent.search_web(args["query"])
             if name == "get_current_url":
                 return self._chrome_agent.get_current_url()
             if name == "get_page_content":

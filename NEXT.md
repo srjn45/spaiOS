@@ -5,19 +5,17 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 2, Session 6 (Chrome URL + Content tools)
+## Current: Phase 2 — Milestone 2, Session 7 (Manual E2E voice flows)
 
-**Goal:** Verify the full "open YouTube" voice flow end-to-end with Chrome running
-on the debug port. Then add `search_web` intent (voice → search query → Chrome
-navigates to search results) and test `get_page_content` summarisation.
+**Goal:** Run the full manual E2E voice flows: "open YouTube", "what's on this page?",
+and "search for lo-fi beats". Fix any pychrome connection issues if they surface.
+Then determine the next milestone goal from the phase doc.
 
 **Notion task:** phase2_m2_chrome_app_control
 
-**Done last session (Session 5):**
-- `pychrome` installed, `ChromeAgent` implemented (open_url, get_current_url,
-  get_page_content, click_element)
-- `scripts/launch-chrome.sh` created
-- ChromeAgent wired into Orchestrator tool loop
+**Done last session (Session 6):**
+- `search_web(query)` added to ChromeAgent (constructs Google URL, delegates to open_url)
+- `search_web` tool registered in Orchestrator tool loop + system prompt updated
 - 49/49 tests pass
 
 **Steps (in order):**
@@ -25,12 +23,10 @@ navigates to search results) and test `get_page_content` summarisation.
 2. Launch spaiOS: `spaiOS`
 3. Manual test: say "open YouTube" → Chrome navigates to youtube.com
 4. Manual test: say "what's on this page?" → overlay summarises page content
-5. If open_url fails: debug pychrome connection; check Chrome was launched with port 9222
-6. Add `search_web(query)` tool to ChromeAgent + orchestrator:
-   - Constructs `https://www.google.com/search?q=<query>` and calls open_url
-7. Manual test: "search for lo-fi beats" → Chrome opens Google search results
-8. Run `uv run pytest` — all pass
-9. Update task doc with results
+5. Manual test: say "search for lo-fi beats" → Chrome opens Google search results
+6. If any step fails: debug pychrome connection; check Chrome was launched with port 9222
+7. Check `docs/phases/2026-04-26-phase-2-the-reach.md` for next milestone after M2
+8. Update this file with Session 8 goal
 
 **Known risks:**
 - Chrome debug port may need a fresh Chrome launch (existing profiles block `--remote-debugging-port`)

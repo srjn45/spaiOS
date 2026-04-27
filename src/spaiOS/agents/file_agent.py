@@ -69,16 +69,12 @@ class FileAgent:
 
         for blocked in SYSTEM_PATH_BLOCKLIST:
             if str(candidate).startswith(blocked + "/") or str(candidate) == blocked:
-                raise SystemPathBlocked(
-                    f"Path targets a protected system directory: {candidate}"
-                )
+                raise SystemPathBlocked(f"Path targets a protected system directory: {candidate}")
 
         try:
             candidate.relative_to(self.sandbox)
         except ValueError:
-            raise SandboxViolation(
-                f"Path '{user_path}' resolves outside sandbox: {candidate}"
-            )
+            raise SandboxViolation(f"Path '{user_path}' resolves outside sandbox: {candidate}")
 
         return candidate
 

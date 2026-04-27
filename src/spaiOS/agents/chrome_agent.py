@@ -64,9 +64,7 @@ class ChromeAgent:
         )
         time.sleep(_CHROME_LAUNCH_WAIT)
         if not self.is_available():
-            raise ChromeNotAvailable(
-                "Chrome launched but CDP port is not yet reachable."
-            )
+            raise ChromeNotAvailable("Chrome launched but CDP port is not yet reachable.")
         self._browser = None
         self._tab = None
         self._ensure_connected()
@@ -99,6 +97,13 @@ class ChromeAgent:
         if len(text) > 4000:
             text = text[:4000] + "\n…(truncated)"
         return text or "(empty page)"
+
+    def search_web(self, query: str) -> str:
+        """Navigate Chrome to a Google search for query."""
+        import urllib.parse
+
+        url = "https://www.google.com/search?q=" + urllib.parse.quote_plus(query)
+        return self.open_url(url)
 
     def click_element(self, selector: str) -> str:
         """Click the first element matching CSS selector."""
