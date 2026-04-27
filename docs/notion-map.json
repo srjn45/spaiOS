@@ -23,6 +23,27 @@
     "phase1_m4_the_brain": "34e7600e54c781f89f01d0904466bbe4",
     "phase1_m5_file_agent": "34e7600e54c781c3a8ddd0cf79bc8cc8",
     "phase1_m6_demo_polish": "34e7600e54c781c69f61ecc13d25c4ff",
-    "phase1_m7_wrap": "34e7600e54c781519921cf273d653ac8"
+    "phase1_m7_wrap": "34e7600e54c781519921cf273d653ac8",
+    "phase2_m1_voice_pipeline": "34f7600e54c78159abb4f9757cad7d32",
+    "phase2_m2_chrome_app_control": "34f7600e54c78192b196f8a97cc08551",
+    "phase2_m3_system_input": "34f7600e54c781f99d47cb35238eb4c9",
+    "phase2_m4_persistent_memory": "34f7600e54c781759787d36c4e105279",
+    "phase2_m5_agents_config": "34f7600e54c7819793c9eeebb1e1646a",
+    "phase2_m6_wrap": "34f7600e54c781b48f25e279f075700b",
+    "phase3_m1_compositor": "34f7600e54c7817baf38f7c227891ae4",
+    "phase3_m2_sphere_rust": "34f7600e54c781f28376f1042606e49c",
+    "phase3_m3_systemd_services": "34f7600e54c781888651d118004e2b41",
+    "phase3_m4_ui_engine": "34f7600e54c7810aa678c6705842875d",
+    "phase3_m5_alpine_distro": "34f7600e54c781748194f5988cfc4dcd",
+    "phase3_m6_installer_iso": "34f7600e54c781fca1bdd3895d422a2f",
+    "phase3_m7_integration_polish": "34f7600e54c781218af4fa0c647d9ddf",
+    "phase4_m1_ebpf_foundations": "34f7600e54c78195937edc3356479297",
+    "phase4_m2_telemetry_pipeline": "34f7600e54c7819595d3d17682562b81",
+    "phase4_m3_cgroups_actuation": "34f7600e54c7810982e5d358fbc3acb2",
+    "phase4_m4_ghost_integration": "34f7600e54c781cbb0f4ebfd9928143c",
+    "phase4_m5_neural_scheduler": "34f7600e54c781a5ae87e16eea425762",
+    "phase4_m6_thermal_management": "34f7600e54c781818fafd94ee6af6ee0",
+    "phase4_m7_arm_raspberry_pi": "34f7600e54c7817194a5ff3f38b801ba",
+    "phase4_m8_benchmarks_polish": "34f7600e54c781739496c9c5827dd350"
   }
 }
