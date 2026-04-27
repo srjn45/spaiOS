@@ -30,17 +30,31 @@ def is_clarifying_question(text: str) -> bool:
     return any(lower.startswith(p) for p in _CLARIFYING_PREFIXES)
 
 
+_BASE_SYSTEM_PROMPT = (
+    "You are spaiOS, a helpful AI assistant running as a desktop overlay. "
+    "The user has a personal file sandbox at ~/spaiOS-sandbox/ on their Linux machine. "
+    "You have tools to manage that directory: list_directory, read_file_summary, "
+    "create_folder, move_file, rename_file, delete_file. "
+    "IMPORTANT: For any request involving files, folders, listing, organizing, moving, "
+    "renaming, deleting, or reading — you MUST call the appropriate tool immediately. "
+    "Do not ask for clarification about what 'sandbox' means. "
+    "Do not describe what you would do. Just call the tool."
+)
+
+
 def _build_system_prompt(ctx_data: dict) -> str:
     parts = []
     if ctx_data.get("app_name"):
         parts.append(f"Active app: {ctx_data['app_name']}")
     if ctx_data.get("window_title"):
         parts.append(f"Window title: {ctx_data['window_title']}")
-    if ctx_data.get("visible_text"):
-        parts.append(f"Visible text:\n{ctx_data['visible_text']}")
     if not parts:
-        return ""
-    return "Context from the user's screen:\n" + "\n".join(parts)
+        return _BASE_SYSTEM_PROMPT
+    screen_section = (
+        "\n\nAdditional screen context (for general questions only — "
+        "do NOT use this to answer file management requests):\n" + "\n".join(parts)
+    )
+    return _BASE_SYSTEM_PROMPT + screen_section
 
 
 def _format_entries(entries: list[FileEntry]) -> str:
