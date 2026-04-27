@@ -5,19 +5,22 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 6, Session 15
+## Current: Phase 1 — Milestone 7, Session 16
 
-**Goal:** Conversation memory + multi-turn context — the overlay should remember earlier turns in a session so follow-up questions ("and delete that one", "now move it to docs/") work correctly.
+**Goal:** End-to-end polish + Phase 1 wrap — smoke-test the full overlay flow, fix any
+remaining rough edges, and close out Phase 1 with a clean commit and Notion sync.
 
 **Steps (in order):**
-1. Review current `_history` handling in `orchestrator.py` — confirm multi-turn messages are threaded correctly
-2. Test multi-turn file flows manually: list → "now move the .py file to a scripts folder" → "delete it"
-3. Add a "clear history" button or `/clear` command to the overlay input so the user can reset context
-4. Verify delete confirmation still works when the pending delete path comes from a prior turn
-5. Commit
+1. Run `python src/main.py` and manually test: idle → question → file list → move → delete confirmation
+2. Test `/clear` resets context mid-session correctly
+3. Test Escape cancels in-flight requests without clearing history prematurely
+4. Fix any bugs found during manual testing
+5. Update phase doc to mark Phase 1 complete
+6. Sync docs/ changes to Notion
+7. Commit
 
-**Notion task:** phase1_m6_memory
-**Task doc:** `docs/tasks/YYYY-MM-DD-m6-memory.md` (create at session start)
+**Notion task:** phase1_m7_wrap
+**Task doc:** `docs/tasks/YYYY-MM-DD-m7-wrap.md` (create at session start)
 
 ---
 
