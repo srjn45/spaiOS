@@ -16,6 +16,7 @@ dependencies = [
     "vosk>=0.3.45",
     "openwakeword>=0.4.0",
     "noisereduce>=3.0.3",
+    "pychrome>=0.2.4",
 ]
 
 [project.scripts]

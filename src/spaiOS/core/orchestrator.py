@@ -4,6 +4,7 @@ import ollama
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from spaiOS.core import context as ctx
+from spaiOS.agents.chrome_agent import ChromeAgent, ChromeNotAvailable
 from spaiOS.agents.file_agent import DeleteConfirmationRequired, FileAgent, FileEntry
 
 _MODEL = "llama3.2:3b"
@@ -35,9 +36,12 @@ _BASE_SYSTEM_PROMPT = (
     "The user has a personal file sandbox at ~/spaiOS-sandbox/ on their Linux machine. "
     "You have tools to manage that directory: list_directory, read_file_summary, "
     "create_folder, move_file, rename_file, delete_file. "
+    "You also have Chrome browser tools: open_url, get_current_url, get_page_content. "
     "IMPORTANT: For any request involving files, folders, listing, organizing, moving, "
     "renaming, deleting, or reading — you MUST call the appropriate tool immediately. "
-    "Do not ask for clarification about what 'sandbox' means. "
+    "For any request to open a website, navigate to a URL, or go to a page — "
+    "call open_url immediately. "
+    "For any request to read or summarize what's on the current page — call get_page_content. "
     "Do not describe what you would do. Just call the tool."
 )
 
@@ -186,6 +190,65 @@ _FILE_TOOLS = [
     },
 ]
 
+_CHROME_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "open_url",
+            "description": (
+                "Navigate Chrome to a URL. Use when the user asks to open a website, "
+                "go to a page, or visit a URL. Prepends https:// if no scheme given."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "The URL to open, e.g. 'https://youtube.com'.",
+                    }
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_url",
+            "description": "Return the URL currently loaded in the active Chrome tab.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_page_content",
+            "description": (
+                "Return the visible text of the current Chrome page. "
+                "Use to read, summarize, or answer questions about page content."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "click_element",
+            "description": "Click the first element matching a CSS selector in the current page.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector for the element to click, e.g. '#submit-btn'.",
+                    }
+                },
+                "required": ["selector"],
+            },
+        },
+    },
+]
+
 _CONFIRM_WORDS = {"yes", "y", "confirm", "ok", "sure", "proceed", "yep", "yup"}
 _DENY_WORDS = {"no", "n", "cancel", "nope", "nah", "stop"}
 _TOOL_LOOP_LIMIT = 10
@@ -197,6 +260,7 @@ class Orchestrator:
     def __init__(self) -> None:
         self._history: list[dict] = []
         self._file_agent = FileAgent()
+        self._chrome_agent = ChromeAgent()
         self._pending_delete: str | None = None
 
     def ask(self, prompt: str) -> str:
@@ -225,7 +289,7 @@ class Orchestrator:
 
         for _ in range(_TOOL_LOOP_LIMIT):
             response = ollama.chat(
-                model=_MODEL, messages=loop_messages, tools=_FILE_TOOLS
+                model=_MODEL, messages=loop_messages, tools=_FILE_TOOLS + _CHROME_TOOLS
             )
             msg = response.message
 
@@ -271,10 +335,20 @@ class Orchestrator:
                     args["subpath"], args.get("max_chars", 500)
                 )
                 return summary
+            if name == "open_url":
+                return self._chrome_agent.open_url(args["url"])
+            if name == "get_current_url":
+                return self._chrome_agent.get_current_url()
+            if name == "get_page_content":
+                return self._chrome_agent.get_page_content()
+            if name == "click_element":
+                return self._chrome_agent.click_element(args["selector"])
             return f"Unknown tool: {name}"
         except DeleteConfirmationRequired as exc:
             self._pending_delete = exc.path
             return "confirmation_required"
+        except ChromeNotAvailable as exc:
+            return f"Chrome not available: {exc}"
         except Exception as exc:
             return f"Error: {exc}"
 
