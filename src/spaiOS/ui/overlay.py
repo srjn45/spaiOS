@@ -248,7 +248,7 @@ class Overlay(QMainWindow):
         self._idle_timer.stop()
         self._sphere.set_state("listening")
         self._response_view.show_response(
-            "Listening… speak now (auto-transcribes in 6s)"
+            "Listening… speak now (auto-detects end of speech)"
         )
         self._input_row.set_enabled(False)
 

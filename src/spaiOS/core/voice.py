@@ -17,7 +17,8 @@ _WAKE_MODEL_NAME = "hey_jarvis_v0.1"
 _WAKE_THRESHOLD = 0.5
 
 _VAD_CHUNK = 512  # samples Silero VAD processes per call (32ms @ 16kHz)
-_VAD_SILENCE_CHUNKS = 32  # ~1s silence before utterance ends (32 * 512 / 16000)
+_VAD_SILENCE_CHUNKS = 48  # ~1.5s silence before utterance ends (48 * 512 / 16000)
+_VAD_SPEECH_THRESHOLD = 0.3  # lower than default 0.5 to handle noisy mic environments
 _UTTERANCE_MAX_S = 12.0  # hard-cap safety net
 _NOISE_PROFILE_S = 1.5  # seconds of ambient audio captured at startup
 
@@ -236,6 +237,7 @@ class WakeWordListener(QThread):
             vad_buffer: list[float] = []
             silence_chunks = 0
             speech_detected = False
+            max_prob = 0.0
 
             while self._running:
                 data, _ = stream.read(_OWW_CHUNK)
@@ -253,11 +255,18 @@ class WakeWordListener(QThread):
                         window = np.array(vad_buffer[:_VAD_CHUNK], dtype=np.float32)
                         vad_buffer = vad_buffer[_VAD_CHUNK:]
                         prob = vad.predict(window)
-                        if prob >= 0.5:
+                        rms = float(np.sqrt(np.mean(window**2)))
+                        if prob >= _VAD_SPEECH_THRESHOLD:
                             speech_detected = True
                             silence_chunks = 0
+                            max_prob = max(max_prob, prob)
                         elif speech_detected:
                             silence_chunks += 1
+                        print(
+                            f"[VAD] rms={rms:.3f} prob={prob:.2f} "
+                            f"speech={speech_detected} sil={silence_chunks}/{_VAD_SILENCE_CHUNKS}",
+                            end="\r",
+                        )
 
                     end_by_vad = (
                         speech_detected and silence_chunks >= _VAD_SILENCE_CHUNKS
@@ -273,7 +282,8 @@ class WakeWordListener(QThread):
                             / 32768.0
                         )
                         print(
-                            f"[spaiOS] utterance done ({reason}) — {len(audio)} samples"
+                            f"\n[spaiOS] utterance done ({reason}) — "
+                            f"{len(audio)} samples, max_vad_prob={max_prob:.2f}"
                         )
                         self.audio_ready.emit(audio, noise_profile)
                         in_utterance = False
@@ -282,6 +292,7 @@ class WakeWordListener(QThread):
                         vad_buffer = []
                         silence_chunks = 0
                         speech_detected = False
+                        max_prob = 0.0
                         vad.reset()
                         oww.reset()
                 else:
@@ -295,6 +306,7 @@ class WakeWordListener(QThread):
                         vad_buffer = []
                         silence_chunks = 0
                         speech_detected = False
+                        max_prob = 0.0
                         vad.reset()
                         oww.reset()
                         self.wake.emit()
