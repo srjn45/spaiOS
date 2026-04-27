@@ -5,22 +5,25 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 1 — Milestone 7, Session 16
+## Current: Phase 2 — Milestone 1, Session 17
 
-**Goal:** End-to-end polish + Phase 1 wrap — smoke-test the full overlay flow, fix any
-remaining rough edges, and close out Phase 1 with a clean commit and Notion sync.
+**Goal:** Begin Phase 2 — Voice Activation. Get `faster-whisper` transcription working
+end-to-end: record audio on push-to-talk (`Super+Shift+Space`), transcribe, and send the
+transcript to the existing Orchestrator as if the user had typed it.
 
 **Steps (in order):**
-1. Run `python src/main.py` and manually test: idle → question → file list → move → delete confirmation
-2. Test `/clear` resets context mid-session correctly
-3. Test Escape cancels in-flight requests without clearing history prematurely
-4. Fix any bugs found during manual testing
-5. Update phase doc to mark Phase 1 complete
-6. Sync docs/ changes to Notion
-7. Commit
+1. Read `docs/phases/2026-04-26-phase-2-the-reach.md` — understand Phase 2 scope
+2. Create task doc: `docs/tasks/YYYY-MM-DD-p2-voice-ptt.md`
+3. Add `faster-whisper` and `sounddevice` to `pyproject.toml` dependencies
+4. Implement `src/spaiOS/core/voice.py` — push-to-talk recording + transcription
+5. Wire `Super+Shift+Space` hotkey in `hotkey.py` → start/stop recording
+6. Overlay shows "Listening…" sphere state during recording
+7. Transcript feeds into `Orchestrator.ask()` on key-release
+8. Manual test: press hotkey, speak, verify transcription appears in overlay
+9. Sync docs to Notion, commit
 
-**Notion task:** phase1_m7_wrap
-**Task doc:** `docs/tasks/YYYY-MM-DD-m7-wrap.md` (create at session start)
+**Notion task:** phase2_m1_voice_ptt
+**Task doc:** `docs/tasks/YYYY-MM-DD-p2-voice-ptt.md` (create at session start)
 
 ---
 

@@ -39,16 +39,18 @@ def test_build_prompt_includes_all_fields():
     ctx = {
         "app_name": "code",
         "window_title": "main.py — VS Code",
-        "visible_text": "def foo():\n    pass",
     }
     result = _build_system_prompt(ctx)
     assert "code" in result
     assert "main.py" in result
-    assert "def foo()" in result
+    assert "spaiOS" in result
 
 
-def test_build_prompt_empty_context_returns_empty():
-    assert _build_system_prompt({}) == ""
+def test_build_prompt_empty_context_returns_base_prompt():
+    result = _build_system_prompt({})
+    assert "spaiOS" in result
+    assert "sandbox" in result
+    assert "Active app" not in result
 
 
 def test_build_prompt_partial_context():

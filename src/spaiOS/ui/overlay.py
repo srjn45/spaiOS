@@ -88,6 +88,7 @@ class Overlay(QMainWindow):
         if prompt.strip().lower() == "/clear":
             self._orchestrator.clear_history()
             self._input_row.clear()
+            self._input_row.set_placeholder("Ask anything…")
             self._response_view.show_response("Context cleared — starting fresh.")
             self._input_row.set_enabled(True)
             self._input_row.focus()
