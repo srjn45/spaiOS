@@ -37,15 +37,19 @@ _BASE_SYSTEM_PROMPT = (
     "You have tools to manage that directory: list_directory, read_file_summary, "
     "create_folder, move_file, rename_file, delete_file. "
     "You also have Chrome browser tools: open_url, search_web, get_current_url, get_page_content, "
-    "click_element, fill_input. "
+    "click_element, fill_input, fill_form, click_link_by_text, get_tabs, clear_history. "
     "IMPORTANT: For any request involving files, folders, listing, organizing, moving, "
     "renaming, deleting, or reading — you MUST call the appropriate tool immediately. "
     "For any request to open a website, navigate to a URL, or go to a page — "
     "call open_url immediately. "
     "For any request to search for something on the web — call search_web immediately. "
     "For any request to read or summarize what's on the current page — call get_page_content. "
-    "For any request to click a button or link on a page — call click_element with a CSS selector. "
-    "For any request to fill in a form field — call fill_input with a CSS selector and the value. "
+    "For any request to click a button or link on a page by its text — call click_link_by_text. "
+    "For any request to click an element by CSS selector — call click_element. "
+    "For any request to fill multiple form fields at once — call fill_form with a dict. "
+    "For any request to fill a single form field — call fill_input with a CSS selector and value. "
+    "For any request to list open tabs — call get_tabs. "
+    "For any request to clear browsing history — call clear_history. "
     "Do not describe what you would do. Just call the tool."
 )
 
@@ -296,6 +300,63 @@ _CHROME_TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "fill_form",
+            "description": (
+                "Fill multiple form fields at once. Pass a dict mapping CSS selectors "
+                "to values. Use when the user asks to fill in a form or enter multiple fields."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fields": {
+                        "type": "object",
+                        "description": "CSS selector to value mapping, e.g. {'#q': 'lo-fi'}.",
+                        "additionalProperties": {"type": "string"},
+                    }
+                },
+                "required": ["fields"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "click_link_by_text",
+            "description": (
+                "Click the first link on the page whose visible text matches link_text "
+                "(case-insensitive). Use when the user says 'click the X link' or 'click on X'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "link_text": {
+                        "type": "string",
+                        "description": "The visible text of the link to click, e.g. 'Wikipedia'.",
+                    }
+                },
+                "required": ["link_text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_tabs",
+            "description": "Return a list of URLs for all currently open Chrome tabs.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "clear_history",
+            "description": "Clear Chrome browsing history.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 ]
 
 _CONFIRM_WORDS = {"yes", "y", "confirm", "ok", "sure", "proceed", "yep", "yup"}
@@ -396,6 +457,15 @@ class Orchestrator:
                 return self._chrome_agent.click_element(args["selector"])
             if name == "fill_input":
                 return self._chrome_agent.fill_input(args["selector"], args["value"])
+            if name == "fill_form":
+                return self._chrome_agent.fill_form(args["fields"])
+            if name == "click_link_by_text":
+                return self._chrome_agent.click_link_by_text(args["link_text"])
+            if name == "get_tabs":
+                tabs = self._chrome_agent.get_tabs()
+                return "\n".join(tabs) if tabs else "No open tabs"
+            if name == "clear_history":
+                return self._chrome_agent.clear_history()
             return f"Unknown tool: {name}"
         except DeleteConfirmationRequired as exc:
             self._pending_delete = exc.path

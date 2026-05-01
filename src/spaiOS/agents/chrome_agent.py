@@ -146,6 +146,49 @@ class ChromeAgent:
             return f"No element found for selector: {selector}"
         return f"Filled {selector}"
 
+    def fill_form(self, fields: dict[str, str]) -> str:
+        """Fill multiple form fields given a {selector: value} mapping."""
+        results = []
+        for selector, value in fields.items():
+            results.append(self.fill_input(selector, value))
+        return "; ".join(results)
+
+    def click_link_by_text(self, link_text: str) -> str:
+        """Click the first <a> whose visible text matches link_text (case-insensitive)."""
+        self._ensure_connected()
+        result = self._tab.Runtime.evaluate(expression=f"""
+(function() {{
+  var target = {repr(link_text.lower())};
+  var links = document.querySelectorAll('a');
+  for (var i = 0; i < links.length; i++) {{
+    if (links[i].innerText.trim().toLowerCase() === target) {{
+      links[i].click();
+      return 'clicked';
+    }}
+  }}
+  return 'not_found';
+}})()
+""")
+        value = result.get("result", {}).get("value", "error")
+        if value == "not_found":
+            return f"No link found with text: {link_text}"
+        return f"Clicked link: {link_text}"
+
+    def get_tabs(self) -> list[str]:
+        """Return the URLs of all open Chrome tabs."""
+        self._ensure_connected()
+        tabs = self._browser.list_tab()
+        return [tab.url for tab in tabs if hasattr(tab, "url")]
+
+    def clear_history(self) -> str:
+        """Clear Chrome browsing history via CDP."""
+        self._ensure_connected()
+        try:
+            self._tab.History.deleteAll()
+            return "Browsing history cleared"
+        except Exception as exc:
+            return f"Could not clear history: {exc}"
+
     def close(self) -> None:
         if self._tab is not None:
             try:
