@@ -23,9 +23,12 @@ _UTTERANCE_MAX_S = 12.0  # hard-cap safety net
 _NOISE_PROFILE_S = 1.5  # seconds of ambient audio captured at startup
 
 _SILERO_ONNX_URL = (
-    "https://github.com/snakers4/silero-vad/raw/master" "/src/silero_vad/data/silero_vad.onnx"
+    "https://github.com/snakers4/silero-vad/raw/master"
+    "/src/silero_vad/data/silero_vad.onnx"
 )
-_SILERO_ONNX_PATH = Path.home() / ".local" / "share" / "spaiOS" / "models" / "silero_vad.onnx"
+_SILERO_ONNX_PATH = (
+    Path.home() / ".local" / "share" / "spaiOS" / "models" / "silero_vad.onnx"
+)
 
 _whisper_model: WhisperModel | None = None
 
@@ -39,7 +42,14 @@ def _get_whisper_model() -> WhisperModel:
 
 def vosk_model_path() -> Path:
     # kept so existing tests that import this symbol don't break
-    return Path.home() / ".local" / "share" / "spaiOS" / "models" / "vosk-model-small-en-us-0.15"
+    return (
+        Path.home()
+        / ".local"
+        / "share"
+        / "spaiOS"
+        / "models"
+        / "vosk-model-small-en-us-0.15"
+    )
 
 
 class SilenceDetector:
@@ -155,7 +165,9 @@ class AudioTranscribeThread(QThread):
     result = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, audio: np.ndarray, noise_profile: np.ndarray | None = None) -> None:
+    def __init__(
+        self, audio: np.ndarray, noise_profile: np.ndarray | None = None
+    ) -> None:
         super().__init__()
         self._audio = audio
         self._noise_profile = noise_profile
@@ -164,7 +176,9 @@ class AudioTranscribeThread(QThread):
         try:
             audio = self._audio
             if self._noise_profile is not None:
-                audio = nr.reduce_noise(y=audio, sr=_SAMPLE_RATE, y_noise=self._noise_profile)
+                audio = nr.reduce_noise(
+                    y=audio, sr=_SAMPLE_RATE, y_noise=self._noise_profile
+                )
             model = _get_whisper_model()
             segments, _ = model.transcribe(audio, language="en")
             text = " ".join(seg.text.strip() for seg in segments).strip()
@@ -206,10 +220,15 @@ class WakeWordListener(QThread):
             print("[spaiOS] Calibrating ambient noise profile…")
             for _ in range(noise_target):
                 data, _ = stream.read(_OWW_CHUNK)
-                chunk = np.frombuffer(bytes(data), dtype="int16").astype(np.float32) / 32768.0
+                chunk = (
+                    np.frombuffer(bytes(data), dtype="int16").astype(np.float32)
+                    / 32768.0
+                )
                 noise_frames.append(chunk)
             noise_profile = np.concatenate(noise_frames)
-            print("[spaiOS] Noise profile ready. Wake word listener active — say 'hey Jarvis'")
+            print(
+                "[spaiOS] Noise profile ready. Wake word listener active — say 'hey Jarvis'"
+            )
 
             # ── Main loop ──────────────────────────────────────────────────────
             in_utterance = False
@@ -249,15 +268,17 @@ class WakeWordListener(QThread):
                             end="\r",
                         )
 
-                    end_by_vad = speech_detected and silence_chunks >= _VAD_SILENCE_CHUNKS
+                    end_by_vad = (
+                        speech_detected and silence_chunks >= _VAD_SILENCE_CHUNKS
+                    )
                     end_by_timeout = utterance_n >= _utterance_max
 
                     if end_by_vad or end_by_timeout:
                         reason = "VAD silence" if end_by_vad else "12s timeout"
                         audio = (
-                            np.frombuffer(b"".join(utterance_frames), dtype="int16").astype(
-                                np.float32
-                            )
+                            np.frombuffer(
+                                b"".join(utterance_frames), dtype="int16"
+                            ).astype(np.float32)
                             / 32768.0
                         )
                         print(

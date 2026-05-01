@@ -8,6 +8,7 @@ _SR = 16000  # sample rate used throughout
 
 # ── SilenceDetector ────────────────────────────────────────────────────────────
 
+
 def _silent_frame(n_samples: int) -> np.ndarray:
     return np.zeros((n_samples, 1), dtype=np.float32)
 
@@ -71,6 +72,7 @@ def test_reset_clears_accumulated_silence():
 
 # ── vosk_model_path ───────────────────────────────────────────────────────────
 
+
 def test_vosk_model_path_under_local_share():
     path = vosk_model_path()
     assert ".local/share/spaiOS" in str(path)
@@ -83,6 +85,7 @@ def test_vosk_model_path_contains_model_name():
 
 # ── noisereduce ───────────────────────────────────────────────────────────────
 
+
 def test_noisereduce_reduces_rms():
     """noisereduce should substantially lower RMS of a pure-noise signal when
     the noise profile is an identical sample of that same stationary noise."""
@@ -91,8 +94,8 @@ def test_noisereduce_reduces_rms():
     rng = np.random.default_rng(42)
     # Stationary white noise (simulates constant fan noise)
     noise = rng.normal(0, 0.05, _SR * 2).astype(np.float32)
-    noise_profile = noise[: _SR]  # first half is the "ambient calibration"
-    signal = noise[_SR:]           # second half is what we want to clean
+    noise_profile = noise[:_SR]  # first half is the "ambient calibration"
+    signal = noise[_SR:]  # second half is what we want to clean
 
     cleaned = nr.reduce_noise(y=signal, sr=_SR, y_noise=noise_profile)
 
@@ -106,6 +109,7 @@ def test_noisereduce_reduces_rms():
 
 
 # ── SileroVAD ─────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(scope="module")
 def vad():

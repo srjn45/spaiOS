@@ -36,13 +36,16 @@ _BASE_SYSTEM_PROMPT = (
     "The user has a personal file sandbox at ~/spaiOS-sandbox/ on their Linux machine. "
     "You have tools to manage that directory: list_directory, read_file_summary, "
     "create_folder, move_file, rename_file, delete_file. "
-    "You also have Chrome browser tools: open_url, search_web, get_current_url, get_page_content. "
+    "You also have Chrome browser tools: open_url, search_web, get_current_url, get_page_content, "
+    "click_element, fill_input. "
     "IMPORTANT: For any request involving files, folders, listing, organizing, moving, "
     "renaming, deleting, or reading — you MUST call the appropriate tool immediately. "
     "For any request to open a website, navigate to a URL, or go to a page — "
     "call open_url immediately. "
     "For any request to search for something on the web — call search_web immediately. "
     "For any request to read or summarize what's on the current page — call get_page_content. "
+    "For any request to click a button or link on a page — call click_element with a CSS selector. "
+    "For any request to fill in a form field — call fill_input with a CSS selector and the value. "
     "Do not describe what you would do. Just call the tool."
 )
 
@@ -268,6 +271,31 @@ _CHROME_TOOLS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "fill_input",
+            "description": (
+                "Set the value of a form input element matched by CSS selector, "
+                "then fire input and change events. Use for filling text fields, "
+                "search boxes, or any form input."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "CSS selector for the input, e.g. 'input[name=\"q\"]'.",
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "The text value to set.",
+                    },
+                },
+                "required": ["selector", "value"],
+            },
+        },
+    },
 ]
 
 _CONFIRM_WORDS = {"yes", "y", "confirm", "ok", "sure", "proceed", "yep", "yup"}
@@ -321,7 +349,9 @@ class Orchestrator:
             loop_messages.append(msg)
 
             for tc in msg.tool_calls:
-                result = self._dispatch_tool(tc.function.name, tc.function.arguments or {})
+                result = self._dispatch_tool(
+                    tc.function.name, tc.function.arguments or {}
+                )
                 loop_messages.append({"role": "tool", "content": result})
 
                 if self._pending_delete is not None:
@@ -364,6 +394,8 @@ class Orchestrator:
                 return self._chrome_agent.get_page_content()
             if name == "click_element":
                 return self._chrome_agent.click_element(args["selector"])
+            if name == "fill_input":
+                return self._chrome_agent.fill_input(args["selector"], args["value"])
             return f"Unknown tool: {name}"
         except DeleteConfirmationRequired as exc:
             self._pending_delete = exc.path

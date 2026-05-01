@@ -102,7 +102,9 @@ class InputRow(QWidget):
 
     def _on_cam_toggle(self) -> None:
         self._cam_active = not self._cam_active
-        self._cam_button.setStyleSheet(_CAM_STYLE_ON if self._cam_active else _CAM_STYLE_OFF)
+        self._cam_button.setStyleSheet(
+            _CAM_STYLE_ON if self._cam_active else _CAM_STYLE_OFF
+        )
 
     def _on_submit(self) -> None:
         text = self._input.text().strip()

@@ -19,9 +19,12 @@ if [ -z "$CHROME_BIN" ]; then
     exit 1
 fi
 
+DATA_DIR="${HOME}/.config/chrome-spaiOS"
+
 echo "Launching Chrome with remote debugging on port ${PORT}..."
 "$CHROME_BIN" \
     --remote-debugging-port="${PORT}" \
+    --user-data-dir="${DATA_DIR}" \
     --no-first-run \
     --no-default-browser-check \
     &

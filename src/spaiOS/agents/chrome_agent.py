@@ -64,7 +64,9 @@ class ChromeAgent:
         )
         time.sleep(_CHROME_LAUNCH_WAIT)
         if not self.is_available():
-            raise ChromeNotAvailable("Chrome launched but CDP port is not yet reachable.")
+            raise ChromeNotAvailable(
+                "Chrome launched but CDP port is not yet reachable."
+            )
         self._browser = None
         self._tab = None
         self._ensure_connected()
@@ -120,6 +122,29 @@ class ChromeAgent:
         if value == "not_found":
             return f"No element found for selector: {selector}"
         return f"Clicked element: {selector}"
+
+    def fill_input(self, selector: str, value: str) -> str:
+        """Set the value of the first input matching CSS selector and fire input/change events."""
+        self._ensure_connected()
+        result = self._tab.Runtime.evaluate(expression=f"""
+(function() {{
+  var el = document.querySelector({repr(selector)});
+  if (!el) return 'not_found';
+  var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+  if (setter && setter.set) {{
+    setter.set.call(el, {repr(value)});
+  }} else {{
+    el.value = {repr(value)};
+  }}
+  el.dispatchEvent(new Event('input', {{bubbles: true}}));
+  el.dispatchEvent(new Event('change', {{bubbles: true}}));
+  return 'filled';
+}})()
+""")
+        status = result.get("result", {}).get("value", "error")
+        if status == "not_found":
+            return f"No element found for selector: {selector}"
+        return f"Filled {selector}"
 
     def close(self) -> None:
         if self._tab is not None:

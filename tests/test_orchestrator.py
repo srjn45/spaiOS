@@ -1,9 +1,13 @@
 from unittest.mock import MagicMock
 
-from spaiOS.core.orchestrator import _build_system_prompt, _emit_ollama_error, is_clarifying_question
-
+from spaiOS.core.orchestrator import (
+    _build_system_prompt,
+    _emit_ollama_error,
+    is_clarifying_question,
+)
 
 # ── is_clarifying_question ─────────────────────────────────────────────────────
+
 
 def test_question_mark_at_end():
     assert is_clarifying_question("What do you mean?") is True
@@ -35,6 +39,7 @@ def test_empty_string_returns_false():
 
 # ── _build_system_prompt ───────────────────────────────────────────────────────
 
+
 def test_build_prompt_includes_all_fields():
     ctx = {
         "app_name": "code",
@@ -61,6 +66,7 @@ def test_build_prompt_partial_context():
 
 
 # ── _emit_ollama_error ─────────────────────────────────────────────────────────
+
 
 def _capture_emit(exc: Exception) -> str:
     signal = MagicMock()

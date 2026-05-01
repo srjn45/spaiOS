@@ -1,4 +1,5 @@
 """Stubs for audio hardware libraries not available in CI/headless test environments."""
+
 import sys
 from unittest.mock import MagicMock
 

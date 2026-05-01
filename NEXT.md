@@ -5,31 +5,30 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 2, Session 7 (Manual E2E voice flows)
+## Current: Phase 2 — Milestone 2, Session 8 (Full Browser Agent)
 
-**Goal:** Run the full manual E2E voice flows: "open YouTube", "what's on this page?",
-and "search for lo-fi beats". Fix any pychrome connection issues if they surface.
-Then determine the next milestone goal from the phase doc.
+**Goal:** Complete the Browser Agent — wrap all CDP tools in intent-oriented functions
+(`click_link_by_text`, `fill_form`, `get_tabs`, `clear_history`), then wire them into
+Orchestrator. Manual E2E: age-gate scenario + multi-field form fill.
 
 **Notion task:** phase2_m2_chrome_app_control
 
-**Done last session (Session 6):**
-- `search_web(query)` added to ChromeAgent (constructs Google URL, delegates to open_url)
-- `search_web` tool registered in Orchestrator tool loop + system prompt updated
-- 49/49 tests pass
+**Done last session (Session 7):**
+- `fill_input(selector, value)` added to ChromeAgent (native value setter + input/change events)
+- `fill_input` tool registered in Orchestrator + system prompt updated
+- 58/58 tests pass
 
 **Steps (in order):**
-1. Launch Chrome: `bash scripts/launch-chrome.sh`
-2. Launch spaiOS: `spaiOS`
-3. Manual test: say "open YouTube" → Chrome navigates to youtube.com
-4. Manual test: say "what's on this page?" → overlay summarises page content
-5. Manual test: say "search for lo-fi beats" → Chrome opens Google search results
-6. If any step fails: debug pychrome connection; check Chrome was launched with port 9222
-7. Check `docs/phases/2026-04-26-phase-2-the-reach.md` for next milestone after M2
-8. Update this file with Session 8 goal
+1. Add `fill_form(fields: dict[str, str])` to ChromeAgent (calls fill_input per field)
+2. Add `click_link_by_text(link_text: str)` to ChromeAgent (querySelector by text content)
+3. Add `get_tabs() -> list` and `clear_history()` to ChromeAgent
+4. Wire all four tools into Orchestrator (_CHROME_TOOLS + dispatch + system prompt)
+5. Write tests for new methods
+6. Manual E2E: launch Chrome + spaiOS, say "fill in the search box with 'lo-fi beats' and submit"
+7. Manual E2E: age-gate scenario on any age-gated site
 
 **Known risks:**
-- Chrome debug port may need a fresh Chrome launch (existing profiles block `--remote-debugging-port`)
+- `click_link_by_text` requires iterating anchors by innerText — may be slow on large pages
 - (see `docs/phases/2026-04-26-phase-2-the-reach.md` for full breakdown)
 
 ---

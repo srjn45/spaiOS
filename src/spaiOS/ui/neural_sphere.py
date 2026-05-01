@@ -41,7 +41,8 @@ _EDGES: list[tuple[int, int]] = [
     (i, j)
     for i in range(_N)
     for j in range(i + 1, _N)
-    if math.sqrt(sum((a - b) ** 2 for a, b in zip(_NODES_BASE[i], _NODES_BASE[j]))) < _EDGE_THRESH
+    if math.sqrt(sum((a - b) ** 2 for a, b in zip(_NODES_BASE[i], _NODES_BASE[j])))
+    < _EDGE_THRESH
 ]
 
 # ── State labels ───────────────────────────────────────────────────────────────
@@ -94,7 +95,9 @@ class NeuralSphere(QWidget):
         self._state = _IDLE
         self._tick = 0
         self._angle_y = 0.0
-        self._nodes: list[tuple[float, float, float]] = _rotate(_NODES_BASE, 0.0, _X_TILT)
+        self._nodes: list[tuple[float, float, float]] = _rotate(
+            _NODES_BASE, 0.0, _X_TILT
+        )
 
         self._sparks: list[_Spark] = []
         self._cooldown = [0] * _N  # per-node firing cooldown in ticks
@@ -231,7 +234,9 @@ class NeuralSphere(QWidget):
         grad.setColorAt(0.55, QColor(gr, gg, gb, 35))
         grad.setColorAt(1.0, QColor(0, 0, 0, 0))
         painter.setBrush(grad)
-        painter.drawEllipse(int(cx - core_r), int(cy - core_r), int(core_r * 2), int(core_r * 2))
+        painter.drawEllipse(
+            int(cx - core_r), int(cy - core_r), int(core_r * 2), int(core_r * 2)
+        )
 
     # ── Mesh ───────────────────────────────────────────────────────────────────
 
