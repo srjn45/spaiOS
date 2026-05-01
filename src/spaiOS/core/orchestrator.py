@@ -54,19 +54,25 @@ _BASE_SYSTEM_PROMPT = (
 )
 
 
-def _build_system_prompt(ctx_data: dict) -> str:
+def _build_system_prompt(ctx_data: dict, memory_context: str = "") -> str:
     parts = []
     if ctx_data.get("app_name"):
         parts.append(f"Active app: {ctx_data['app_name']}")
     if ctx_data.get("window_title"):
         parts.append(f"Window title: {ctx_data['window_title']}")
-    if not parts:
-        return _BASE_SYSTEM_PROMPT
-    screen_section = (
-        "\n\nAdditional screen context (for general questions only — "
-        "do NOT use this to answer file management requests):\n" + "\n".join(parts)
-    )
-    return _BASE_SYSTEM_PROMPT + screen_section
+    prompt = _BASE_SYSTEM_PROMPT
+    if memory_context:
+        prompt += (
+            "\n\nRecent session history (use this to answer questions about "
+            "what the user has been working on):\n" + memory_context
+        )
+    if parts:
+        prompt += (
+            "\n\nCurrent screen context (for general questions only — "
+            "do NOT use this to answer file management requests):\n"
+            + "\n".join(parts)
+        )
+    return prompt
 
 
 def _format_entries(entries: list[FileEntry]) -> str:
@@ -367,18 +373,41 @@ _TOOL_LOOP_LIMIT = 10
 class Orchestrator:
     _MAX_HISTORY_PAIRS = 10
 
-    def __init__(self) -> None:
+    def __init__(self, memory=None) -> None:
         self._history: list[dict] = []
         self._file_agent = FileAgent()
         self._chrome_agent = ChromeAgent()
         self._pending_delete: str | None = None
+        self._memory = memory
+        self._memory_context: str = self._load_memory_context()
+
+    def _load_memory_context(self) -> str:
+        if self._memory is None:
+            return ""
+        sessions = self._memory.get_recent_sessions(5)
+        if not sessions:
+            return ""
+        return "\n---\n".join(sessions)
+
+    def end_session(self) -> None:
+        if self._memory is not None and self._history:
+            import datetime
+            from spaiOS.core.summarizer import summarize_session
+
+            summary = summarize_session(self._history)
+            if summary:
+                self._memory.store_session(
+                    datetime.date.today().isoformat(), summary, [], []
+                )
+                self._memory_context = self._load_memory_context()
+        self.clear_history()
 
     def ask(self, prompt: str) -> str:
         if self._pending_delete is not None:
             return self._handle_delete_response(prompt)
 
         ctx_data = ctx.capture()
-        system_prompt = _build_system_prompt(ctx_data)
+        system_prompt = _build_system_prompt(ctx_data, self._memory_context)
         messages: list[dict] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
