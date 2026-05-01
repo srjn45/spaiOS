@@ -7,25 +7,19 @@ Update it at the end of every session before committing.
 
 ## Current: Phase 2 — Milestone 5 (Remaining Agents + Config)
 
-**Goal:** Build Code Agent, Media Agent, and MCP config system so the "First Five" PRD scenarios can all run end-to-end.
+**Goal:** Build Media Agent and MCP config system so the "First Five" PRD scenarios can all run end-to-end.
 
 **Notion task:** phase2_m5_agents_config
 
-**Done (M4 — Persistent Memory):**
-- MemoryStore: session_log, user_profile, context_snippets (ChromaDB-backed, TDD)
-- summarize_session() using llama3.2:3b
-- Orchestrator: accepts memory, injects last 5 sessions into system prompt, end_session() on hide
-- Overlay: MemoryStore created on init, end_session() in background thread on toggle/idle/Escape
-- /remember slash command for manual snippets
-- 89/89 tests pass
+**Done (M5 Session 14 — Code Agent):**
+- CodeAgent: read_file, write_file (diff + confirm via WriteConfirmationRequired), run_terminal_command (blocklist + timeout), open_in_editor
+- Orchestrator: _CODE_TOOLS registered, write-confirmation flow wired (mirrors delete-confirm), _pending_write state
+- 105/105 tests pass
 
-**Plan:** Write plan doc before starting: `docs/superpowers/plans/YYYY-MM-DD-m5-agents-config.md`
-
-**Steps (in order — write plan first):**
-1. Task 1: Code Agent — read_file, write_file (diff + confirm), run_terminal_command, open_in_editor
-2. Task 2: Media Agent — apply_filter ("90s_film", "vintage", "high_contrast", "black_white")
-3. Task 3: MCP config — config.toml provider switching (ollama / anthropic / openai)
-4. Task 4: "First Five" PRD scenarios E2E acceptance test
+**Steps (remaining):**
+1. Task 2: Media Agent — apply_filter ("90s_film", "vintage", "high_contrast", "black_white")
+2. Task 3: MCP config — config.toml provider switching (ollama / anthropic / openai)
+3. Task 4: "First Five" PRD scenarios E2E acceptance test
 
 ---
 

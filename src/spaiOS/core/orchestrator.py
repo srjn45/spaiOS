@@ -5,6 +5,11 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from spaiOS.core import context as ctx
 from spaiOS.agents.chrome_agent import ChromeAgent, ChromeNotAvailable
+from spaiOS.agents.code_agent import (
+    CodeAgent,
+    CommandBlocked,
+    WriteConfirmationRequired,
+)
 from spaiOS.agents.file_agent import DeleteConfirmationRequired, FileAgent, FileEntry
 
 _MODEL = "llama3.2:3b"
@@ -38,6 +43,9 @@ _BASE_SYSTEM_PROMPT = (
     "create_folder, move_file, rename_file, delete_file. "
     "You also have Chrome browser tools: open_url, search_web, get_current_url, get_page_content, "
     "click_element, fill_input, fill_form, click_link_by_text, get_tabs, clear_history. "
+    "You also have code tools: read_file (read any file), "
+    "write_file (shows diff + asks confirmation), "
+    "run_terminal_command (run a shell command), open_in_editor (open file in $EDITOR). "
     "IMPORTANT: For any request involving files, folders, listing, organizing, moving, "
     "renaming, deleting, or reading — you MUST call the appropriate tool immediately. "
     "For any request to open a website, navigate to a URL, or go to a page — "
@@ -50,6 +58,11 @@ _BASE_SYSTEM_PROMPT = (
     "For any request to fill a single form field — call fill_input with a CSS selector and value. "
     "For any request to list open tabs — call get_tabs. "
     "For any request to clear browsing history — call clear_history. "
+    "For any request to read or view a file's content — call read_file. "
+    "For any request to write, save, or modify a file — "
+    "call write_file (a diff will be shown for confirmation). "
+    "For any request to run a shell command or terminal command — call run_terminal_command. "
+    "For any request to open a file in an editor — call open_in_editor. "
     "Do not describe what you would do. Just call the tool."
 )
 
@@ -69,8 +82,7 @@ def _build_system_prompt(ctx_data: dict, memory_context: str = "") -> str:
     if parts:
         prompt += (
             "\n\nCurrent screen context (for general questions only — "
-            "do NOT use this to answer file management requests):\n"
-            + "\n".join(parts)
+            "do NOT use this to answer file management requests):\n" + "\n".join(parts)
         )
     return prompt
 
@@ -365,6 +377,81 @@ _CHROME_TOOLS = [
     },
 ]
 
+_CODE_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read the full contents of a file at the given absolute path.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to the file.",
+                    }
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_file",
+            "description": (
+                "Write content to a file. Always shows a unified diff first and asks "
+                "the user for confirmation before saving."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to write.",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Full new content of the file.",
+                    },
+                },
+                "required": ["path", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_terminal_command",
+            "description": "Run a shell command and return its stdout+stderr output.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cmd": {
+                        "type": "string",
+                        "description": "The shell command to run.",
+                    }
+                },
+                "required": ["cmd"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "open_in_editor",
+            "description": "Open a file in the user's $EDITOR (defaults to nano).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute path to open."}
+                },
+                "required": ["path"],
+            },
+        },
+    },
+]
+
 _CONFIRM_WORDS = {"yes", "y", "confirm", "ok", "sure", "proceed", "yep", "yup"}
 _DENY_WORDS = {"no", "n", "cancel", "nope", "nah", "stop"}
 _TOOL_LOOP_LIMIT = 10
@@ -377,7 +464,11 @@ class Orchestrator:
         self._history: list[dict] = []
         self._file_agent = FileAgent()
         self._chrome_agent = ChromeAgent()
+        self._code_agent = CodeAgent()
         self._pending_delete: str | None = None
+        self._pending_write: tuple[str, str, str] | None = (
+            None  # (path, new_content, diff)
+        )
         self._memory = memory
         self._memory_context: str = self._load_memory_context()
 
@@ -409,6 +500,8 @@ class Orchestrator:
         self.clear_history()
 
     def ask(self, prompt: str) -> str:
+        if self._pending_write is not None:
+            return self._handle_write_response(prompt)
         if self._pending_delete is not None:
             return self._handle_delete_response(prompt)
 
@@ -434,7 +527,9 @@ class Orchestrator:
 
         for _ in range(_TOOL_LOOP_LIMIT):
             response = ollama.chat(
-                model=_MODEL, messages=loop_messages, tools=_FILE_TOOLS + _CHROME_TOOLS
+                model=_MODEL,
+                messages=loop_messages,
+                tools=_FILE_TOOLS + _CHROME_TOOLS + _CODE_TOOLS,
             )
             msg = response.message
 
@@ -450,6 +545,13 @@ class Orchestrator:
                 )
                 loop_messages.append({"role": "tool", "content": result})
 
+                if self._pending_write is not None:
+                    path, _, diff = self._pending_write
+                    return (
+                        f"Here's the diff for '{path}':\n\n"
+                        f"```diff\n{diff}\n```\n\n"
+                        f"Apply this change? (yes/no)"
+                    )
                 if self._pending_delete is not None:
                     return (
                         f"I need your confirmation to delete '{self._pending_delete}'. "
@@ -501,7 +603,20 @@ class Orchestrator:
                 return "\n".join(tabs) if tabs else "No open tabs"
             if name == "clear_history":
                 return self._chrome_agent.clear_history()
+            if name == "read_file":
+                return self._code_agent.read_file(args["path"])
+            if name == "write_file":
+                self._code_agent.write_file(args["path"], args["content"])
+            if name == "run_terminal_command":
+                return self._code_agent.run_terminal_command(args["cmd"])
+            if name == "open_in_editor":
+                return self._code_agent.open_in_editor(args["path"])
             return f"Unknown tool: {name}"
+        except WriteConfirmationRequired as exc:
+            self._pending_write = (exc.path, exc.new_content, exc.diff)
+            return "write_confirmation_required"
+        except CommandBlocked as exc:
+            return f"Command blocked for safety: {exc}"
         except DeleteConfirmationRequired as exc:
             self._pending_delete = exc.path
             return "confirmation_required"
@@ -509,6 +624,24 @@ class Orchestrator:
             return f"Chrome not available: {exc}"
         except Exception as exc:
             return f"Error: {exc}"
+
+    def _handle_write_response(self, prompt: str) -> str:
+        lower = prompt.strip().lower()
+        path, content, diff = self._pending_write
+        self._pending_write = None
+
+        if lower in _CONFIRM_WORDS:
+            try:
+                result = self._code_agent.confirm_write(path, content)
+                reply = f"Done — {result}"
+            except Exception as exc:
+                reply = f"Write failed: {exc}"
+        else:
+            reply = f"OK, I won't write to '{path}'."
+
+        self._history.append({"role": "user", "content": prompt})
+        self._history.append({"role": "assistant", "content": reply})
+        return reply
 
     def _handle_delete_response(self, prompt: str) -> str:
         lower = prompt.strip().lower()
@@ -531,6 +664,7 @@ class Orchestrator:
     def clear_history(self) -> None:
         self._history = []
         self._pending_delete = None
+        self._pending_write = None
 
     def ask_with_vision(self, prompt: str, image_bytes: bytes) -> str:
         b64 = base64.b64encode(image_bytes).decode()
