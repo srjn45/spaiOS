@@ -5,30 +5,27 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 4 (Persistent Memory)
+## Current: Phase 2 — Milestone 5 (Remaining Agents + Config)
 
-**Goal:** Build ChromaDB-backed memory that survives across overlay sessions. AI can answer
-"what have I been working on?" and carry context forward automatically.
+**Goal:** Build Code Agent, Media Agent, and MCP config system so the "First Five" PRD scenarios can all run end-to-end.
 
-**Notion task:** phase2_m4_persistent_memory
+**Notion task:** phase2_m5_agents_config
 
-**Done (M2 — Chrome App Control):**
-- ChromeAgent: open_url, search_web, fill_form, click_link_by_text (partial match + buttons), get_tabs, clear_history
-- fill_form E2E verified working. click_link_by_text fixed (partial match, includes buttons). get_tabs fixed (direct /json)
-- Skipped M3 (system-wide input/AT-SPI) — deferred, will revisit after all other milestones
-- 69/69 tests pass
+**Done (M4 — Persistent Memory):**
+- MemoryStore: session_log, user_profile, context_snippets (ChromaDB-backed, TDD)
+- summarize_session() using llama3.2:3b
+- Orchestrator: accepts memory, injects last 5 sessions into system prompt, end_session() on hide
+- Overlay: MemoryStore created on init, end_session() in background thread on toggle/idle/Escape
+- /remember slash command for manual snippets
+- 89/89 tests pass
 
-**Plan:** `docs/superpowers/plans/2026-05-01-m4-persistent-memory.md`
+**Plan:** Write plan doc before starting: `docs/superpowers/plans/YYYY-MM-DD-m5-agents-config.md`
 
-**Steps (in order — follow the plan doc):**
-1. Task 1: `uv add chromadb` + `ollama pull nomic-embed-text`
-2. Task 2: MemoryStore — session_log (TDD)
-3. Task 3: MemoryStore — user_profile (TDD)
-4. Task 4: MemoryStore — context_snippets (TDD)
-5. Task 5: summarize_session() using llama3.2:3b (TDD)
-6. Task 6: Wire MemoryStore into Orchestrator (memory context in system prompt)
-7. Task 7: Wire end_session() into Overlay hide paths (background thread)
-8. Task 8: /remember slash command for manual snippets
+**Steps (in order — write plan first):**
+1. Task 1: Code Agent — read_file, write_file (diff + confirm), run_terminal_command, open_in_editor
+2. Task 2: Media Agent — apply_filter ("90s_film", "vintage", "high_contrast", "black_white")
+3. Task 3: MCP config — config.toml provider switching (ollama / anthropic / openai)
+4. Task 4: "First Five" PRD scenarios E2E acceptance test
 
 ---
 
