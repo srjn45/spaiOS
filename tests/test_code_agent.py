@@ -78,6 +78,7 @@ def test_confirm_write_creates_new_file(agent, tmp_path):
     result = agent.confirm_write(path, "x = 42\n")
     assert "Written" in result or "written" in result.lower()
     from pathlib import Path
+
     assert Path(path).read_text() == "x = 42\n"
 
 
@@ -90,6 +91,7 @@ def test_confirm_write_creates_parent_directories(agent, tmp_path):
     path = str(tmp_path / "a" / "b" / "c.py")
     agent.confirm_write(path, "pass\n")
     from pathlib import Path
+
     assert Path(path).exists()
 
 

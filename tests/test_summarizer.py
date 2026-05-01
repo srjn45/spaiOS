@@ -4,6 +4,7 @@ from unittest.mock import patch
 class TestSummarizeSession:
     def test_returns_empty_string_for_empty_history(self):
         from spaiOS.core.summarizer import summarize_session
+
         result = summarize_session([])
         assert result == ""
 

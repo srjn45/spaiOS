@@ -1,9 +1,10 @@
 import base64
 
-import ollama
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from spaiOS.core import context as ctx
+from spaiOS.core import llm
+from spaiOS.core.config import AppConfig, load_config
 from spaiOS.agents.chrome_agent import ChromeAgent, ChromeNotAvailable
 from spaiOS.agents.code_agent import (
     CodeAgent,
@@ -13,8 +14,10 @@ from spaiOS.agents.code_agent import (
 from spaiOS.agents.file_agent import DeleteConfirmationRequired, FileAgent, FileEntry
 from spaiOS.agents.media_agent import MediaAgent
 
-_MODEL = "llama3.2:3b"
-_VISION_MODEL = "moondream:latest"
+
+class _LoopInterrupt(Exception):
+    def __init__(self, message: str) -> None:
+        self.message = message
 
 
 _CLARIFYING_PREFIXES = (
@@ -539,22 +542,20 @@ _MEDIA_TOOLS = [
 
 _CONFIRM_WORDS = {"yes", "y", "confirm", "ok", "sure", "proceed", "yep", "yup"}
 _DENY_WORDS = {"no", "n", "cancel", "nope", "nah", "stop"}
-_TOOL_LOOP_LIMIT = 10
 
 
 class Orchestrator:
     _MAX_HISTORY_PAIRS = 10
 
-    def __init__(self, memory=None) -> None:
+    def __init__(self, memory=None, config: AppConfig | None = None) -> None:
+        self._config = config or load_config()
         self._history: list[dict] = []
         self._file_agent = FileAgent()
         self._chrome_agent = ChromeAgent()
         self._code_agent = CodeAgent()
         self._media_agent = MediaAgent()
         self._pending_delete: str | None = None
-        self._pending_write: tuple[str, str, str] | None = (
-            None  # (path, new_content, diff)
-        )
+        self._pending_write: tuple[str, str, str] | None = None
         self._memory = memory
         self._memory_context: str = self._load_memory_context()
 
@@ -609,42 +610,15 @@ class Orchestrator:
         return reply
 
     def _run_with_tools(self, messages: list[dict]) -> str:
-        loop_messages = list(messages)
-
-        for _ in range(_TOOL_LOOP_LIMIT):
-            response = ollama.chat(
-                model=_MODEL,
-                messages=loop_messages,
-                tools=_FILE_TOOLS + _CHROME_TOOLS + _CODE_TOOLS + _MEDIA_TOOLS,
+        try:
+            return llm.chat_with_tools(
+                messages,
+                _FILE_TOOLS + _CHROME_TOOLS + _CODE_TOOLS + _MEDIA_TOOLS,
+                self._dispatch_tool,
+                self._config,
             )
-            msg = response.message
-
-            if not msg.tool_calls:
-                return msg.content or ""
-
-            # Append the assistant turn (may include tool_calls)
-            loop_messages.append(msg)
-
-            for tc in msg.tool_calls:
-                result = self._dispatch_tool(
-                    tc.function.name, tc.function.arguments or {}
-                )
-                loop_messages.append({"role": "tool", "content": result})
-
-                if self._pending_write is not None:
-                    path, _, diff = self._pending_write
-                    return (
-                        f"Here's the diff for '{path}':\n\n"
-                        f"```diff\n{diff}\n```\n\n"
-                        f"Apply this change? (yes/no)"
-                    )
-                if self._pending_delete is not None:
-                    return (
-                        f"I need your confirmation to delete '{self._pending_delete}'. "
-                        f"Should I go ahead? (yes/no)"
-                    )
-
-        return "I reached the tool call limit — please try a simpler request."
+        except _LoopInterrupt as exc:
+            return exc.message
 
     def _dispatch_tool(self, name: str, args: dict) -> str:
         try:
@@ -711,12 +685,19 @@ class Orchestrator:
             return f"Unknown tool: {name}"
         except WriteConfirmationRequired as exc:
             self._pending_write = (exc.path, exc.new_content, exc.diff)
-            return "write_confirmation_required"
+            raise _LoopInterrupt(
+                f"Here's the diff for '{exc.path}':\n\n"
+                f"```diff\n{exc.diff}\n```\n\n"
+                f"Apply this change? (yes/no)"
+            )
         except CommandBlocked as exc:
             return f"Command blocked for safety: {exc}"
         except DeleteConfirmationRequired as exc:
             self._pending_delete = exc.path
-            return "confirmation_required"
+            raise _LoopInterrupt(
+                f"I need your confirmation to delete '{exc.path}'. "
+                f"Should I go ahead? (yes/no)"
+            )
         except ChromeNotAvailable as exc:
             return f"Chrome not available: {exc}"
         except Exception as exc:
@@ -724,7 +705,7 @@ class Orchestrator:
 
     def _handle_write_response(self, prompt: str) -> str:
         lower = prompt.strip().lower()
-        path, content, diff = self._pending_write
+        path, content, _ = self._pending_write
         self._pending_write = None
 
         if lower in _CONFIRM_WORDS:
@@ -764,24 +745,32 @@ class Orchestrator:
         self._pending_write = None
 
     def ask_with_vision(self, prompt: str, image_bytes: bytes) -> str:
+        import ollama  # vision always uses local model
+
         b64 = base64.b64encode(image_bytes).decode()
         response = ollama.chat(
-            model=_VISION_MODEL,
+            model=self._config.ollama.vision_model,
             messages=[{"role": "user", "content": prompt, "images": [b64]}],
         )
         return response.message.content
 
 
-def _emit_ollama_error(exc: Exception, signal: pyqtSignal) -> None:  # type: ignore[type-arg]
+def _emit_llm_error(exc: Exception, signal: pyqtSignal) -> None:  # type: ignore[type-arg]
     msg = str(exc).lower()
     if "connection" in msg or "refused" in msg or "connrefused" in msg:
         signal.emit("Ollama is not running. Start it with: ollama serve")
     elif ("model" in msg and ("not found" in msg or "404" in msg)) or "pull" in msg:
-        signal.emit(f"Model not found. Run: ollama pull {_MODEL}")
+        signal.emit("Model not found. Check your config.toml model setting.")
     elif "timeout" in msg or "timed out" in msg:
-        signal.emit("Request timed out — Ollama may be busy. Try again.")
+        signal.emit("Request timed out — the LLM provider may be busy. Try again.")
+    elif "api_key" in msg or "authentication" in msg or "unauthorized" in msg:
+        signal.emit("API key error — check your config.toml api_key setting.")
     else:
         signal.emit(f"Error: {str(exc)}")
+
+
+# Keep old name as alias so any external references don't break immediately
+_emit_ollama_error = _emit_llm_error
 
 
 class AskThread(QThread):
@@ -798,7 +787,7 @@ class AskThread(QThread):
             text = self._orchestrator.ask(self._prompt)
             self.result.emit(text)
         except Exception as exc:
-            _emit_ollama_error(exc, self.error)
+            _emit_llm_error(exc, self.error)
 
 
 class AskWithVisionThread(QThread):
@@ -816,4 +805,4 @@ class AskWithVisionThread(QThread):
             text = self._orchestrator.ask_with_vision(self._prompt, self._image_bytes)
             self.result.emit(text)
         except Exception as exc:
-            _emit_ollama_error(exc, self.error)
+            _emit_llm_error(exc, self.error)

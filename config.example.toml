@@ -1,0 +1,21 @@
+# spaiOS configuration template
+# Copy this file to config.toml and fill in your settings.
+# config.toml is .gitignored — never commit API keys.
+
+[provider]
+# Options: "ollama" (default, local) | "anthropic" | "openai"
+name = "ollama"
+
+[ollama]
+model = "llama3.2:3b"
+vision_model = "moondream:latest"
+host = "http://localhost:11434"
+
+[anthropic]
+api_key = ""          # your Anthropic API key
+model = "claude-haiku-4-5-20251001"
+
+[openai]
+api_key = ""          # your OpenAI API key
+model = "gpt-4o-mini"
+base_url = "https://api.openai.com/v1"

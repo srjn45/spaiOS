@@ -30,14 +30,19 @@ def rgba_image(tmp_path):
 # --- apply_filter: output file creation ---
 
 
-@pytest.mark.parametrize("style", ["black_white", "high_contrast", "vintage", "90s_film"])
+@pytest.mark.parametrize(
+    "style", ["black_white", "high_contrast", "vintage", "90s_film"]
+)
 def test_apply_filter_creates_output_file(agent, rgb_image, style):
     out = agent.apply_filter(str(rgb_image), style)
     from pathlib import Path
+
     assert Path(out).exists()
 
 
-@pytest.mark.parametrize("style", ["black_white", "high_contrast", "vintage", "90s_film"])
+@pytest.mark.parametrize(
+    "style", ["black_white", "high_contrast", "vintage", "90s_film"]
+)
 def test_apply_filter_output_is_valid_jpeg(agent, rgb_image, style):
     out = agent.apply_filter(str(rgb_image), style)
     img = Image.open(out)
@@ -45,7 +50,9 @@ def test_apply_filter_output_is_valid_jpeg(agent, rgb_image, style):
     assert img.size == (100, 80)
 
 
-@pytest.mark.parametrize("style", ["black_white", "high_contrast", "vintage", "90s_film"])
+@pytest.mark.parametrize(
+    "style", ["black_white", "high_contrast", "vintage", "90s_film"]
+)
 def test_apply_filter_output_path_contains_style(agent, rgb_image, style):
     out = agent.apply_filter(str(rgb_image), style)
     assert style in out
@@ -113,6 +120,7 @@ def test_resize_image_produces_correct_dimensions(agent, rgb_image):
 def test_resize_image_creates_output_file(agent, rgb_image):
     out = agent.resize_image(str(rgb_image), 20, 20)
     from pathlib import Path
+
     assert Path(out).exists()
 
 

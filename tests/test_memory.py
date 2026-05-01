@@ -23,6 +23,7 @@ def _make_store():
         mock_client.get_or_create_collection.side_effect = get_or_create
 
         from spaiOS.core.memory import MemoryStore
+
         store = MemoryStore.__new__(MemoryStore)
         store._client = mock_client
         store._sessions = sessions_col
@@ -34,7 +35,9 @@ def _make_store():
 class TestStoreSession:
     def test_upserts_document_with_date_id(self):
         store, sessions_col, _, _ = _make_store()
-        store.store_session("2026-05-01", "Worked on memory module", ["code"], ["memory impl"])
+        store.store_session(
+            "2026-05-01", "Worked on memory module", ["code"], ["memory impl"]
+        )
         sessions_col.upsert.assert_called_once()
         kwargs = sessions_col.upsert.call_args[1]
         assert kwargs["ids"] == ["2026-05-01"]
@@ -43,7 +46,9 @@ class TestStoreSession:
 
     def test_document_contains_apps_and_tasks(self):
         store, sessions_col, _, _ = _make_store()
-        store.store_session("2026-05-01", "Did stuff", ["chrome", "code"], ["browsed", "coded"])
+        store.store_session(
+            "2026-05-01", "Did stuff", ["chrome", "code"], ["browsed", "coded"]
+        )
         doc = sessions_col.upsert.call_args[1]["documents"][0]
         assert "chrome" in doc
         assert "browsed" in doc

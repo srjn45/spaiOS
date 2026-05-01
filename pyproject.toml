@@ -18,6 +18,8 @@ dependencies = [
     "noisereduce>=3.0.3",
     "pychrome>=0.2.4",
     "chromadb>=0.6.0",
+    "anthropic>=0.40.0",
+    "openai>=1.50.0",
 ]
 
 [project.scripts]

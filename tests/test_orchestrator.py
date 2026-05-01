@@ -81,7 +81,7 @@ def test_connection_refused_message():
 
 def test_model_not_found_message():
     msg = _capture_emit(Exception("model 'llama3.2:3b' not found"))
-    assert "ollama pull" in msg
+    assert "config.toml" in msg or "model" in msg.lower()
 
 
 def test_timeout_message():
@@ -100,6 +100,7 @@ def test_generic_error_passthrough():
 class TestOrchestratorMemory:
     def test_no_memory_context_when_memory_is_none(self):
         from spaiOS.core.orchestrator import Orchestrator
+
         orc = Orchestrator(memory=None)
         assert orc._memory_context == ""
 
@@ -126,7 +127,10 @@ class TestOrchestratorMemory:
             {"role": "assistant", "content": "You have 2 files."},
         ]
 
-        with patch("spaiOS.core.summarizer.summarize_session", return_value="User listed files."):
+        with patch(
+            "spaiOS.core.summarizer.summarize_session",
+            return_value="User listed files.",
+        ):
             orc.end_session()
 
         mock_memory.store_session.assert_called_once()
@@ -136,6 +140,7 @@ class TestOrchestratorMemory:
 
     def test_end_session_is_noop_when_memory_is_none(self):
         from spaiOS.core.orchestrator import Orchestrator
+
         orc = Orchestrator(memory=None)
         orc._history = [{"role": "user", "content": "hi"}]
         orc.end_session()

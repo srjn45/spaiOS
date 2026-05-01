@@ -22,9 +22,16 @@ Update it at the end of every session before committing.
 - Orchestrator: _MEDIA_TOOLS registered, dispatch wired for all three tools
 - 129/129 tests pass
 
+**Done (M5 Session 16 — MCP Config):**
+- config.py: AppConfig dataclasses + load_config() using stdlib tomllib
+- llm.py: chat_with_tools() routing Ollama / Anthropic / OpenAI; each provider owns its own tool loop
+- Orchestrator: uses llm.chat_with_tools; _LoopInterrupt replaces mid-loop pending checks; config loaded once at init
+- config.example.toml committed; config.toml stays gitignored
+- anthropic + openai added to pyproject.toml deps
+- 144/144 tests pass (15 new: 7 config + 8 llm)
+
 **Steps (remaining):**
-1. Task 3: MCP config — config.toml provider switching (ollama / anthropic / openai)
-2. Task 4: "First Five" PRD scenarios E2E acceptance test
+1. Task 4: "First Five" PRD scenarios E2E acceptance test
 
 ---
 
