@@ -5,30 +5,30 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 2, Session 9 (E2E Browser Tests)
+## Current: Phase 2 — Milestone 4 (Persistent Memory)
 
-**Goal:** Manual E2E validation of the full Browser Agent — age-gate scenario, multi-field form
-fill, tab listing. Then mark Milestone 2 complete and prep Phase 2 Milestone 3.
+**Goal:** Build ChromaDB-backed memory that survives across overlay sessions. AI can answer
+"what have I been working on?" and carry context forward automatically.
 
-**Notion task:** phase2_m2_chrome_app_control
+**Notion task:** phase2_m4_persistent_memory
 
-**Done last session (Session 8):**
-- `fill_form`, `click_link_by_text`, `get_tabs`, `clear_history` added to ChromeAgent
-- All four tools wired into Orchestrator (tool defs + dispatch + system prompt)
-- 68/68 tests pass
+**Done (M2 — Chrome App Control):**
+- ChromeAgent: open_url, search_web, fill_form, click_link_by_text (partial match + buttons), get_tabs, clear_history
+- fill_form E2E verified working. click_link_by_text fixed (partial match, includes buttons). get_tabs fixed (direct /json)
+- Skipped M3 (system-wide input/AT-SPI) — deferred, will revisit after all other milestones
+- 69/69 tests pass
 
-**Steps (in order):**
-1. Launch Chrome + spaiOS
-2. E2E: say "fill in the search box with 'lo-fi beats' and submit" — verify fill_form works
-3. E2E: say "click the Wikipedia link" on a Google results page — verify click_link_by_text
-4. E2E: say "what tabs do I have open" — verify get_tabs returns tab URLs
-5. E2E: age-gate scenario on any age-gated site — verify click_link_by_text on confirm button
-6. If all pass: update Notion task to done, read phase doc and plan Milestone 3
+**Plan:** `docs/superpowers/plans/2026-05-01-m4-persistent-memory.md`
 
-**Known risks:**
-- `click_link_by_text` may time out on pages with hundreds of links (large DOM)
-- CDP `History.deleteAll` may not be supported in all Chrome builds
-- (see `docs/phases/2026-04-26-phase-2-the-reach.md` for full breakdown)
+**Steps (in order — follow the plan doc):**
+1. Task 1: `uv add chromadb` + `ollama pull nomic-embed-text`
+2. Task 2: MemoryStore — session_log (TDD)
+3. Task 3: MemoryStore — user_profile (TDD)
+4. Task 4: MemoryStore — context_snippets (TDD)
+5. Task 5: summarize_session() using llama3.2:3b (TDD)
+6. Task 6: Wire MemoryStore into Orchestrator (memory context in system prompt)
+7. Task 7: Wire end_session() into Overlay hide paths (background thread)
+8. Task 8: /remember slash command for manual snippets
 
 ---
 

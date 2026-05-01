@@ -91,9 +91,9 @@ black src/
 
 Run the overlay:
 ```bash
-python src/main.py
-# or after pip install:
-spaiOS
+uv run spaiOS
+# or: uv run python src/spaiOS/main.py
+# NOTE: plain `python src/main.py` is wrong path; plain `spaiOS` requires activated venv
 ```
 
 Test Ollama connection:

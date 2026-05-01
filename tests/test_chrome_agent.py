@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 
 from spaiOS.agents.chrome_agent import ChromeAgent
@@ -101,23 +102,32 @@ class TestFillForm:
 # ── click_link_by_text ─────────────────────────────────────────────────────────
 
 
+def _mock_urlopen(tabs_data: list) -> MagicMock:
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps(tabs_data).encode()
+    mock_resp.__enter__ = lambda s: s
+    mock_resp.__exit__ = MagicMock(return_value=False)
+    return mock_resp
+
+
 class TestClickLinkByText:
     def test_click_found_link(self):
         agent = _make_agent_connected()
-        agent._tab.Runtime.evaluate.return_value = _runtime_result("clicked")
+        agent._tab.Runtime.evaluate.return_value = _runtime_result("clicked:Wikipedia")
         result = agent.click_link_by_text("Wikipedia")
-        assert result == "Clicked link: Wikipedia"
+        assert "Wikipedia" in result
+        assert "Clicked" in result
 
     def test_link_not_found(self):
         agent = _make_agent_connected()
         agent._tab.Runtime.evaluate.return_value = _runtime_result("not_found")
         result = agent.click_link_by_text("Nonexistent")
-        assert "No link found" in result
+        assert "No link or button found" in result
         assert "Nonexistent" in result
 
     def test_link_text_lowercased_in_js(self):
         agent = _make_agent_connected()
-        agent._tab.Runtime.evaluate.return_value = _runtime_result("clicked")
+        agent._tab.Runtime.evaluate.return_value = _runtime_result("clicked:Wikipedia")
         agent.click_link_by_text("Wikipedia")
         expr = agent._tab.Runtime.evaluate.call_args[1]["expression"]
         assert "wikipedia" in expr
@@ -129,18 +139,29 @@ class TestClickLinkByText:
 class TestGetTabs:
     def test_returns_tab_urls(self):
         agent = _make_agent_connected()
-        tab1 = MagicMock()
-        tab1.url = "https://google.com"
-        tab2 = MagicMock()
-        tab2.url = "https://youtube.com"
-        agent._browser.list_tab.return_value = [tab1, tab2]
-        result = agent.get_tabs()
+        tabs = [
+            {"type": "page", "url": "https://google.com"},
+            {"type": "page", "url": "https://youtube.com"},
+        ]
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(tabs)):
+            result = agent.get_tabs()
         assert result == ["https://google.com", "https://youtube.com"]
 
     def test_returns_empty_list_when_no_tabs(self):
         agent = _make_agent_connected()
-        agent._browser.list_tab.return_value = []
-        assert agent.get_tabs() == []
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen([])):
+            result = agent.get_tabs()
+        assert result == []
+
+    def test_filters_non_page_tabs(self):
+        agent = _make_agent_connected()
+        tabs = [
+            {"type": "page", "url": "https://google.com"},
+            {"type": "background_page", "url": "chrome-extension://abc/bg.html"},
+        ]
+        with patch("urllib.request.urlopen", return_value=_mock_urlopen(tabs)):
+            result = agent.get_tabs()
+        assert result == ["https://google.com"]
 
 
 # ── clear_history ──────────────────────────────────────────────────────────────

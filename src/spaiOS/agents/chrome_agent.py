@@ -154,16 +154,17 @@ class ChromeAgent:
         return "; ".join(results)
 
     def click_link_by_text(self, link_text: str) -> str:
-        """Click the first <a> whose visible text matches link_text (case-insensitive)."""
+        """Click the first link or button whose text contains link_text (case-insensitive, partial match)."""
         self._ensure_connected()
         result = self._tab.Runtime.evaluate(expression=f"""
 (function() {{
   var target = {repr(link_text.lower())};
-  var links = document.querySelectorAll('a');
-  for (var i = 0; i < links.length; i++) {{
-    if (links[i].innerText.trim().toLowerCase() === target) {{
-      links[i].click();
-      return 'clicked';
+  var els = document.querySelectorAll('a, button, [role="button"], [role="link"]');
+  for (var i = 0; i < els.length; i++) {{
+    var text = els[i].innerText.trim().toLowerCase();
+    if (text.length > 0 && text.includes(target)) {{
+      els[i].click();
+      return 'clicked:' + els[i].innerText.trim().substring(0, 60);
     }}
   }}
   return 'not_found';
@@ -171,14 +172,17 @@ class ChromeAgent:
 """)
         value = result.get("result", {}).get("value", "error")
         if value == "not_found":
-            return f"No link found with text: {link_text}"
-        return f"Clicked link: {link_text}"
+            return f"No link or button found with text containing: {link_text}"
+        return f"Clicked: {value.replace('clicked:', '', 1)}"
 
     def get_tabs(self) -> list[str]:
-        """Return the URLs of all open Chrome tabs."""
-        self._ensure_connected()
-        tabs = self._browser.list_tab()
-        return [tab.url for tab in tabs if hasattr(tab, "url")]
+        """Return the URLs of all open Chrome page tabs."""
+        import json
+        import urllib.request
+
+        with urllib.request.urlopen(f"{_CDP_URL}/json") as resp:
+            data = json.loads(resp.read())
+        return [t["url"] for t in data if t.get("type") == "page" and t.get("url")]
 
     def clear_history(self) -> str:
         """Clear Chrome browsing history via CDP."""
