@@ -147,3 +147,47 @@ def test_silero_vad_reset_clears_state(vad):
     chunk = np.zeros(512, dtype=np.float32)
     scores = [vad.predict(chunk) for _ in range(3)]
     assert all(s < 0.5 for s in scores), f"Scores after reset too high: {scores}"
+
+
+# ── save_wav ──────────────────────────────────────────────────────────────────
+
+
+def test_save_wav_creates_file(tmp_path):
+    from spaiOS.core.voice import save_wav
+    audio = np.zeros(16000, dtype=np.float32)
+    path = tmp_path / "test.wav"
+    save_wav(audio, path)
+    assert path.exists()
+
+
+def test_save_wav_correct_format(tmp_path):
+    import wave
+    from spaiOS.core.voice import save_wav
+    audio = np.zeros(16000, dtype=np.float32)
+    path = tmp_path / "test.wav"
+    save_wav(audio, path)
+    with wave.open(str(path), "rb") as wf:
+        assert wf.getnchannels() == 1
+        assert wf.getsampwidth() == 2
+        assert wf.getframerate() == 16000
+        assert wf.getnframes() == 16000
+
+
+def test_save_wav_clips_amplitude(tmp_path):
+    import wave
+    from spaiOS.core.voice import save_wav
+    audio = np.array([2.0, -2.0, 0.5], dtype=np.float32)
+    path = tmp_path / "clip.wav"
+    save_wav(audio, path)
+    with wave.open(str(path), "rb") as wf:
+        pcm = np.frombuffer(wf.readframes(3), dtype=np.int16)
+    assert pcm[0] == 32767
+    assert pcm[1] == -32767
+    assert abs(pcm[2] - 16383) <= 1
+
+
+def test_save_wav_creates_parent_dirs(tmp_path):
+    from spaiOS.core.voice import save_wav
+    path = tmp_path / "nested" / "dir" / "out.wav"
+    save_wav(np.zeros(1600, dtype=np.float32), path)
+    assert path.exists()

@@ -1,4 +1,5 @@
 import urllib.request
+import wave
 from pathlib import Path
 
 import noisereduce as nr
@@ -185,6 +186,32 @@ class AudioTranscribeThread(QThread):
             self.result.emit(text)
         except Exception as exc:
             self.error.emit(f"Transcription failed: {exc}")
+
+
+def save_wav(audio: np.ndarray, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pcm = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16)
+    with wave.open(str(path), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(_SAMPLE_RATE)
+        wf.writeframes(pcm.tobytes())
+
+
+class WakeSampleThread(QThread):
+    """Records a single 2-second audio clip at 16 kHz mono."""
+
+    done = pyqtSignal(object)  # emits np.ndarray
+
+    def run(self) -> None:
+        audio = sd.rec(
+            2 * _SAMPLE_RATE,
+            samplerate=_SAMPLE_RATE,
+            channels=_CHANNELS,
+            dtype="float32",
+        )
+        sd.wait()
+        self.done.emit(audio.flatten().copy())
 
 
 class WakeWordListener(QThread):
