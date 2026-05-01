@@ -59,3 +59,15 @@ class MemoryStore:
             reverse=True,
         )
         return [doc for _, doc in pairs[:n]]
+
+    def get_user_profile(self) -> dict:
+        results = self._profile.get(ids=["profile"])
+        if not results["documents"]:
+            return {}
+        return json.loads(results["documents"][0])
+
+    def set_user_profile(self, data: dict) -> None:
+        self._profile.upsert(
+            ids=["profile"],
+            documents=[json.dumps(data)],
+        )

@@ -77,3 +77,28 @@ class TestGetRecentSessions:
         }
         result = store.get_recent_sessions(n=5)
         assert result == ["only_one"]
+
+
+class TestUserProfile:
+    def test_get_returns_empty_dict_when_no_profile(self):
+        store, _, profile_col, _ = _make_store()
+        profile_col.get.return_value = {"documents": []}
+        result = store.get_user_profile()
+        assert result == {}
+
+    def test_get_returns_stored_profile(self):
+        store, _, profile_col, _ = _make_store()
+        profile_col.get.return_value = {
+            "documents": ['{"name": "Srajan", "timezone": "IST"}']
+        }
+        result = store.get_user_profile()
+        assert result == {"name": "Srajan", "timezone": "IST"}
+
+    def test_set_upserts_json_with_fixed_id(self):
+        store, _, profile_col, _ = _make_store()
+        store.set_user_profile({"name": "Srajan", "timezone": "IST"})
+        profile_col.upsert.assert_called_once()
+        kwargs = profile_col.upsert.call_args[1]
+        assert kwargs["ids"] == ["profile"]
+        stored = json.loads(kwargs["documents"][0])
+        assert stored["name"] == "Srajan"
