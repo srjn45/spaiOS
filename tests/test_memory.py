@@ -102,3 +102,27 @@ class TestUserProfile:
         assert kwargs["ids"] == ["profile"]
         stored = json.loads(kwargs["documents"][0])
         assert stored["name"] == "Srajan"
+
+
+class TestContextSnippets:
+    def test_store_snippet_upserts_with_hash_id(self):
+        store, _, _, snippets_col = _make_store()
+        store.store_snippet("ZeroDivisionError in utils.py line 42")
+        snippets_col.upsert.assert_called_once()
+        kwargs = snippets_col.upsert.call_args[1]
+        assert len(kwargs["ids"]) == 1
+        assert "ZeroDivisionError" in kwargs["documents"][0]
+
+    def test_search_snippets_returns_empty_on_no_results(self):
+        store, _, _, snippets_col = _make_store()
+        snippets_col.query.return_value = {"documents": [[]]}
+        result = store.search_snippets("error in python")
+        assert result == []
+
+    def test_search_snippets_returns_matched_docs(self):
+        store, _, _, snippets_col = _make_store()
+        snippets_col.query.return_value = {
+            "documents": [["ZeroDivisionError in utils.py line 42"]]
+        }
+        result = store.search_snippets("division error")
+        assert result == ["ZeroDivisionError in utils.py line 42"]

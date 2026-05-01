@@ -71,3 +71,13 @@ class MemoryStore:
             ids=["profile"],
             documents=[json.dumps(data)],
         )
+
+    def store_snippet(self, text: str) -> None:
+        import hashlib
+        snippet_id = hashlib.sha256(text.encode()).hexdigest()[:16]
+        self._snippets.upsert(ids=[snippet_id], documents=[text])
+
+    def search_snippets(self, query: str, n: int = 3) -> list[str]:
+        results = self._snippets.query(query_texts=[query], n_results=n)
+        docs = results.get("documents", [[]])
+        return docs[0] if docs else []
