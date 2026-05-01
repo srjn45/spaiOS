@@ -35,6 +35,7 @@ class Overlay(QMainWindow):
         super().__init__()
         try:
             from spaiOS.core.memory import MemoryStore
+
             _memory = MemoryStore()
         except Exception as exc:
             print(f"[spaiOS] Memory unavailable: {exc}")
@@ -149,7 +150,7 @@ class Overlay(QMainWindow):
             return
 
         if prompt.strip().lower().startswith("/remember "):
-            text = prompt.strip()[len("/remember "):].strip()
+            text = prompt.strip()[len("/remember ") :].strip()
             if text:
                 msg = self._orchestrator.remember_snippet(text)
             else:
@@ -307,7 +308,9 @@ class Overlay(QMainWindow):
             if self._active_thread is not None:
                 self._cancel_thinking()
             else:
-                threading.Thread(target=self._orchestrator.end_session, daemon=True).start()
+                threading.Thread(
+                    target=self._orchestrator.end_session, daemon=True
+                ).start()
                 self._idle_timer.stop()
                 self.hide()
         else:

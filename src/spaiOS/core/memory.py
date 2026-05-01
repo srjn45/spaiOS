@@ -74,6 +74,7 @@ class MemoryStore:
 
     def store_snippet(self, text: str) -> None:
         import hashlib
+
         snippet_id = hashlib.sha256(text.encode()).hexdigest()[:16]
         self._snippets.upsert(ids=[snippet_id], documents=[text])
 

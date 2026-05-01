@@ -16,10 +16,15 @@ Update it at the end of every session before committing.
 - Orchestrator: _CODE_TOOLS registered, write-confirmation flow wired (mirrors delete-confirm), _pending_write state
 - 105/105 tests pass
 
+**Done (M5 Session 15 — Media Agent):**
+- MediaAgent: apply_filter (90s_film, vintage, high_contrast, black_white), get_image_info, resize_image
+- 90s_film = 20% desaturation + grain (numpy) + vignette + warm shift
+- Orchestrator: _MEDIA_TOOLS registered, dispatch wired for all three tools
+- 129/129 tests pass
+
 **Steps (remaining):**
-1. Task 2: Media Agent — apply_filter ("90s_film", "vintage", "high_contrast", "black_white")
-2. Task 3: MCP config — config.toml provider switching (ollama / anthropic / openai)
-3. Task 4: "First Five" PRD scenarios E2E acceptance test
+1. Task 3: MCP config — config.toml provider switching (ollama / anthropic / openai)
+2. Task 4: "First Five" PRD scenarios E2E acceptance test
 
 ---
 

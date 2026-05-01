@@ -11,6 +11,7 @@ from spaiOS.agents.code_agent import (
     WriteConfirmationRequired,
 )
 from spaiOS.agents.file_agent import DeleteConfirmationRequired, FileAgent, FileEntry
+from spaiOS.agents.media_agent import MediaAgent
 
 _MODEL = "llama3.2:3b"
 _VISION_MODEL = "moondream:latest"
@@ -46,6 +47,8 @@ _BASE_SYSTEM_PROMPT = (
     "You also have code tools: read_file (read any file), "
     "write_file (shows diff + asks confirmation), "
     "run_terminal_command (run a shell command), open_in_editor (open file in $EDITOR). "
+    "You also have media tools: apply_filter (apply photo filter to an image), "
+    "get_image_info (return image dimensions and metadata), resize_image (resize an image). "
     "IMPORTANT: For any request involving files, folders, listing, organizing, moving, "
     "renaming, deleting, or reading — you MUST call the appropriate tool immediately. "
     "For any request to open a website, navigate to a URL, or go to a page — "
@@ -63,6 +66,12 @@ _BASE_SYSTEM_PROMPT = (
     "call write_file (a diff will be shown for confirmation). "
     "For any request to run a shell command or terminal command — call run_terminal_command. "
     "For any request to open a file in an editor — call open_in_editor. "
+    "For any request to apply a photo filter, make a photo look vintage, "
+    "convert to black and white, or make an image look like a film photo — "
+    "call apply_filter with the image path and style "
+    "('90s_film', 'vintage', 'high_contrast', or 'black_white'). "
+    "For any request about image dimensions or metadata — call get_image_info. "
+    "For any request to resize an image — call resize_image. "
     "Do not describe what you would do. Just call the tool."
 )
 
@@ -452,6 +461,82 @@ _CODE_TOOLS = [
     },
 ]
 
+_MEDIA_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "apply_filter",
+            "description": (
+                "Apply a named photo filter to an image file. "
+                "Styles: '90s_film' (grain, vignette, warm tones), "
+                "'vintage' (faded, warm), "
+                "'high_contrast', 'black_white'. "
+                "Returns the output file path."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "image_path": {
+                        "type": "string",
+                        "description": "Absolute path to the source image.",
+                    },
+                    "style": {
+                        "type": "string",
+                        "description": (
+                            "Filter style: '90s_film', 'vintage', "
+                            "'high_contrast', or 'black_white'."
+                        ),
+                        "enum": ["90s_film", "vintage", "high_contrast", "black_white"],
+                    },
+                },
+                "required": ["image_path", "style"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_image_info",
+            "description": "Return width, height, mode, format, and file size for an image.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to the image.",
+                    }
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "resize_image",
+            "description": "Resize an image to exact pixel dimensions. Returns output path.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to the source image.",
+                    },
+                    "width": {
+                        "type": "integer",
+                        "description": "Target width in pixels.",
+                    },
+                    "height": {
+                        "type": "integer",
+                        "description": "Target height in pixels.",
+                    },
+                },
+                "required": ["path", "width", "height"],
+            },
+        },
+    },
+]
+
 _CONFIRM_WORDS = {"yes", "y", "confirm", "ok", "sure", "proceed", "yep", "yup"}
 _DENY_WORDS = {"no", "n", "cancel", "nope", "nah", "stop"}
 _TOOL_LOOP_LIMIT = 10
@@ -465,6 +550,7 @@ class Orchestrator:
         self._file_agent = FileAgent()
         self._chrome_agent = ChromeAgent()
         self._code_agent = CodeAgent()
+        self._media_agent = MediaAgent()
         self._pending_delete: str | None = None
         self._pending_write: tuple[str, str, str] | None = (
             None  # (path, new_content, diff)
@@ -529,7 +615,7 @@ class Orchestrator:
             response = ollama.chat(
                 model=_MODEL,
                 messages=loop_messages,
-                tools=_FILE_TOOLS + _CHROME_TOOLS + _CODE_TOOLS,
+                tools=_FILE_TOOLS + _CHROME_TOOLS + _CODE_TOOLS + _MEDIA_TOOLS,
             )
             msg = response.message
 
@@ -611,6 +697,17 @@ class Orchestrator:
                 return self._code_agent.run_terminal_command(args["cmd"])
             if name == "open_in_editor":
                 return self._code_agent.open_in_editor(args["path"])
+            if name == "apply_filter":
+                out = self._media_agent.apply_filter(args["image_path"], args["style"])
+                return f"Filter applied — saved to: {out}"
+            if name == "get_image_info":
+                info = self._media_agent.get_image_info(args["path"])
+                return str(info)
+            if name == "resize_image":
+                out = self._media_agent.resize_image(
+                    args["path"], args["width"], args["height"]
+                )
+                return f"Resized image saved to: {out}"
             return f"Unknown tool: {name}"
         except WriteConfirmationRequired as exc:
             self._pending_write = (exc.path, exc.new_content, exc.diff)
