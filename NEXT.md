@@ -5,33 +5,21 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 5 (Remaining Agents + Config)
+## Current: Phase 2 — Milestone 6 (Phase 2 Wrap)
 
-**Goal:** Build Media Agent and MCP config system so the "First Five" PRD scenarios can all run end-to-end.
+**Goal:** Full acceptance criteria test against a live system. Fix any failures. Then retrospective + Phase 3 task breakdown.
 
-**Notion task:** phase2_m5_agents_config
+**Notion task:** phase2_m6_wrap
 
-**Done (M5 Session 14 — Code Agent):**
-- CodeAgent: read_file, write_file (diff + confirm via WriteConfirmationRequired), run_terminal_command (blocklist + timeout), open_in_editor
-- Orchestrator: _CODE_TOOLS registered, write-confirmation flow wired (mirrors delete-confirm), _pending_write state
-- 105/105 tests pass
-
-**Done (M5 Session 15 — Media Agent):**
-- MediaAgent: apply_filter (90s_film, vintage, high_contrast, black_white), get_image_info, resize_image
-- 90s_film = 20% desaturation + grain (numpy) + vignette + warm shift
-- Orchestrator: _MEDIA_TOOLS registered, dispatch wired for all three tools
-- 129/129 tests pass
-
-**Done (M5 Session 16 — MCP Config):**
-- config.py: AppConfig dataclasses + load_config() using stdlib tomllib
-- llm.py: chat_with_tools() routing Ollama / Anthropic / OpenAI; each provider owns its own tool loop
-- Orchestrator: uses llm.chat_with_tools; _LoopInterrupt replaces mid-loop pending checks; config loaded once at init
-- config.example.toml committed; config.toml stays gitignored
-- anthropic + openai added to pyproject.toml deps
-- 144/144 tests pass (15 new: 7 config + 8 llm)
+**Done (M5 — complete):**
+- Session 14: Code Agent (read, write+diff, run_terminal_command, open_in_editor) — 105 tests
+- Session 15: Media Agent (90s_film, vintage, high_contrast, black_white filters) — 129 tests
+- Session 16: MCP config system (Ollama / Anthropic / OpenAI routing via config.toml) — 144 tests
+- Session 17: "First Five" E2E acceptance tests (17 new tests, 161 total)
 
 **Steps (remaining):**
-1. Task 4: "First Five" PRD scenarios E2E acceptance test
+1. Session 18–19: Run all Phase 2 acceptance criteria (phase doc items 1–8) against live overlay. Document failures, fix them.
+2. Session 20: Retrospective doc, update Notion, write Phase 3 session breakdown.
 
 ---
 
