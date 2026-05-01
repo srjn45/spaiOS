@@ -1,3 +1,5 @@
+import threading
+
 import numpy as np
 from PyQt6.QtCore import QEasingCurve, QEvent, QPropertyAnimation, Qt, QTimer, pyqtSlot
 from PyQt6.QtWidgets import (
@@ -31,7 +33,13 @@ class Overlay(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
-        self._orchestrator = Orchestrator()
+        try:
+            from spaiOS.core.memory import MemoryStore
+            _memory = MemoryStore()
+        except Exception as exc:
+            print(f"[spaiOS] Memory unavailable: {exc}")
+            _memory = None
+        self._orchestrator = Orchestrator(memory=_memory)
         self._active_thread: AskThread | AskWithVisionThread | None = None
         self._voice_recorder = VoiceRecorder()
         self._voice_thread: VoiceTranscribeThread | AudioTranscribeThread | None = None
@@ -110,13 +118,13 @@ class Overlay(QMainWindow):
 
     def _on_idle_timeout(self) -> None:
         if self._active_thread is None and self._voice_thread is None:
-            self._orchestrator.clear_history()
+            threading.Thread(target=self._orchestrator.end_session, daemon=True).start()
             self.hide()
 
     @pyqtSlot()
     def toggle(self) -> None:
         if self.isVisible():
-            self._orchestrator.clear_history()
+            threading.Thread(target=self._orchestrator.end_session, daemon=True).start()
             self._idle_timer.stop()
             self.hide()
         else:
@@ -286,7 +294,7 @@ class Overlay(QMainWindow):
             if self._active_thread is not None:
                 self._cancel_thinking()
             else:
-                self._orchestrator.clear_history()
+                threading.Thread(target=self._orchestrator.end_session, daemon=True).start()
                 self._idle_timer.stop()
                 self.hide()
         else:
