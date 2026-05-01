@@ -5,30 +5,29 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 2, Session 8 (Full Browser Agent)
+## Current: Phase 2 — Milestone 2, Session 9 (E2E Browser Tests)
 
-**Goal:** Complete the Browser Agent — wrap all CDP tools in intent-oriented functions
-(`click_link_by_text`, `fill_form`, `get_tabs`, `clear_history`), then wire them into
-Orchestrator. Manual E2E: age-gate scenario + multi-field form fill.
+**Goal:** Manual E2E validation of the full Browser Agent — age-gate scenario, multi-field form
+fill, tab listing. Then mark Milestone 2 complete and prep Phase 2 Milestone 3.
 
 **Notion task:** phase2_m2_chrome_app_control
 
-**Done last session (Session 7):**
-- `fill_input(selector, value)` added to ChromeAgent (native value setter + input/change events)
-- `fill_input` tool registered in Orchestrator + system prompt updated
-- 58/58 tests pass
+**Done last session (Session 8):**
+- `fill_form`, `click_link_by_text`, `get_tabs`, `clear_history` added to ChromeAgent
+- All four tools wired into Orchestrator (tool defs + dispatch + system prompt)
+- 68/68 tests pass
 
 **Steps (in order):**
-1. Add `fill_form(fields: dict[str, str])` to ChromeAgent (calls fill_input per field)
-2. Add `click_link_by_text(link_text: str)` to ChromeAgent (querySelector by text content)
-3. Add `get_tabs() -> list` and `clear_history()` to ChromeAgent
-4. Wire all four tools into Orchestrator (_CHROME_TOOLS + dispatch + system prompt)
-5. Write tests for new methods
-6. Manual E2E: launch Chrome + spaiOS, say "fill in the search box with 'lo-fi beats' and submit"
-7. Manual E2E: age-gate scenario on any age-gated site
+1. Launch Chrome + spaiOS
+2. E2E: say "fill in the search box with 'lo-fi beats' and submit" — verify fill_form works
+3. E2E: say "click the Wikipedia link" on a Google results page — verify click_link_by_text
+4. E2E: say "what tabs do I have open" — verify get_tabs returns tab URLs
+5. E2E: age-gate scenario on any age-gated site — verify click_link_by_text on confirm button
+6. If all pass: update Notion task to done, read phase doc and plan Milestone 3
 
 **Known risks:**
-- `click_link_by_text` requires iterating anchors by innerText — may be slow on large pages
+- `click_link_by_text` may time out on pages with hundreds of links (large DOM)
+- CDP `History.deleteAll` may not be supported in all Chrome builds
 - (see `docs/phases/2026-04-26-phase-2-the-reach.md` for full breakdown)
 
 ---
