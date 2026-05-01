@@ -30,6 +30,7 @@
     "phase2_m4_persistent_memory": "34f7600e54c781759787d36c4e105279",
     "phase2_m5_agents_config": "34f7600e54c7819793c9eeebb1e1646a",
     "phase2_m6_wrap": "34f7600e54c781b48f25e279f075700b",
+    "phase2_m7_wake_word_setup": "3537600e54c7815fab1ad499ee566b97",
     "phase3_m1_compositor": "34f7600e54c7817baf38f7c227891ae4",
     "phase3_m2_sphere_rust": "34f7600e54c781f28376f1042606e49c",
     "phase3_m3_systemd_services": "34f7600e54c781888651d118004e2b41",

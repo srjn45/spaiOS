@@ -178,6 +178,20 @@ push_to_talk_key = "super+shift+space"
 
 The Orchestrator checks config on startup. Anthropic/OpenAI providers use their respective Python SDKs with the same message format as Ollama. Model switching is transparent to all agents.
 
+### 8. Custom Wake Word Setup (`src/ui/wake_setup.py`, `src/core/wake_profile.py`, `src/core/wake_trainer.py`)
+
+Lets users replace or add to the default "hey Jarvis" trigger with their own phrase, calibrated to their accent.
+
+**Two flows via the `/wake-setup` overlay command:**
+- **Preset "Hi Spai"**: Records 5 samples → Whisper calibrates the user's accent target → OWW (`hey_jarvis` base) detects the phonetically similar phrase.
+- **Custom phrase** (e.g. "Cutto"): Same 5-sample recording → Whisper calibration → background `WhisperPollThread` monitors a rolling 3-second audio window.
+
+**Detection modes:**
+- `oww_whisper` — phonetically OWW-compatible (hi spai, alexa, hey mycroft); OWW fires, `whisper_target` stores accent-specific transcription
+- `whisper_poll` — arbitrary phrase; `WhisperPollThread` runs Whisper every ~3s on a shared audio queue, fuzzy-matches via `difflib.SequenceMatcher` (0.6 threshold)
+
+**Profile storage:** `~/.local/share/spaiOS/wake_profile.json`. WAV samples saved per phrase at `~/.local/share/spaiOS/wake-samples/<slug>/` for future verifier training.
+
 ---
 
 ## Session Breakdown
@@ -213,6 +227,10 @@ The Orchestrator checks config on startup. Anthropic/OpenAI providers use their 
 - Session 18–19: Full acceptance criteria test. Fix failures.
 - Session 20: Retrospective, update Notion, write Phase 3 task breakdown.
 
+### Milestone 7: Custom Wake Word Setup (Sessions 21–22)
+- Session 21: `WakeProfileStore` + WAV recording utilities + Whisper calibration (`wake_trainer.py`) + `WakeSetupDialog` (5-sample recording wizard)
+- Session 22: `WhisperPollThread` + multi-phrase `WakeWordListener` + `/wake-setup` overlay command + full integration test
+
 ---
 
 ## Acceptance Criteria
@@ -225,3 +243,6 @@ The Orchestrator checks config on startup. Anthropic/OpenAI providers use their 
 6. "set up a workspace for the Tokyo project" → creates folder + blank file + opens editor
 7. All Phase 1 acceptance criteria still pass with the new voice input path
 8. Switch `config.toml` provider to "anthropic" + valid API key → Orchestrator uses Claude API
+9. `/wake-setup` in overlay → dialog opens, user records phrase 5× + 3 negative clips → profile saved to `wake_profile.json`
+10. After "Hi Spai" setup: saying "Hi Spai" triggers overlay (OWW detects it phonetically, no keyboard)
+11. After custom phrase setup (e.g. "Cutto"): saying the phrase triggers overlay via Whisper polling within ~4 seconds
