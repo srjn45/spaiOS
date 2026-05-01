@@ -310,6 +310,132 @@ class TestScenario5WorkspaceSetup:
         assert "tokyo-project" in result
 
 
+# ── AC3: Age-Gate Click ───────────────────────────────────────────────────────
+
+
+class TestScenario3AgeGate:
+    """'confirm I'm above 18' on an age-gate page → click_element dispatched."""
+
+    def test_age_gate_routes_click_element_to_chrome_agent(self):
+        orc = Orchestrator(config=_config())
+        orc._chrome_agent.click_element = MagicMock(
+            return_value="Clicked element: #age-confirm-btn"
+        )
+
+        with patch(
+            "spaiOS.core.llm.chat_with_tools",
+            side_effect=_dispatch_caller(
+                "click_element", {"selector": "#age-confirm-btn"}
+            ),
+        ):
+            result = orc.ask("confirm I'm above 18")
+
+        orc._chrome_agent.click_element.assert_called_once_with("#age-confirm-btn")
+        assert "Clicked" in result
+
+    def test_age_gate_result_includes_selector(self):
+        orc = Orchestrator(config=_config())
+        orc._chrome_agent.click_element = MagicMock(
+            return_value="Clicked element: .age-gate-confirm"
+        )
+
+        with patch(
+            "spaiOS.core.llm.chat_with_tools",
+            side_effect=_dispatch_caller(
+                "click_element", {"selector": ".age-gate-confirm"}
+            ),
+        ):
+            result = orc.ask("click the confirm button on this page")
+
+        assert ".age-gate-confirm" in result
+
+    def test_element_not_found_returns_friendly_message(self):
+        orc = Orchestrator(config=_config())
+        orc._chrome_agent.click_element = MagicMock(
+            return_value="No element found matching: #age-confirm"
+        )
+
+        with patch(
+            "spaiOS.core.llm.chat_with_tools",
+            side_effect=_dispatch_caller("click_element", {"selector": "#age-confirm"}),
+        ):
+            result = orc.ask("confirm I'm above 18")
+
+        assert "No element found" in result or "#age-confirm" in result
+
+
+# ── AC6: Open in Editor ───────────────────────────────────────────────────────
+
+
+class TestScenario6OpenInEditor:
+    """'open this file in the editor' → open_in_editor dispatched to CodeAgent."""
+
+    def test_open_in_editor_routes_to_code_agent(self):
+        orc = Orchestrator(config=_config())
+        orc._code_agent.open_in_editor = MagicMock(
+            return_value="Opened /home/srajan/spaiOS-sandbox/tokyo-project/main.py in editor"
+        )
+
+        with patch(
+            "spaiOS.core.llm.chat_with_tools",
+            side_effect=_dispatch_caller(
+                "open_in_editor",
+                {"path": "/home/srajan/spaiOS-sandbox/tokyo-project/main.py"},
+            ),
+        ):
+            result = orc.ask(
+                "open /home/srajan/spaiOS-sandbox/tokyo-project/main.py in the editor"
+            )
+
+        orc._code_agent.open_in_editor.assert_called_once_with(
+            "/home/srajan/spaiOS-sandbox/tokyo-project/main.py"
+        )
+        assert "Opened" in result or "editor" in result.lower()
+
+    def test_workspace_setup_then_open_editor(self, tmp_path):
+        """Full workspace flow: create folder, then open a file in editor."""
+        from spaiOS.agents.file_agent import FileAgent
+
+        orc = Orchestrator(config=_config())
+        orc._file_agent = FileAgent(sandbox_path=str(tmp_path))
+        orc._code_agent.open_in_editor = MagicMock(
+            return_value=f"Opened {tmp_path}/tokyo-project/main.py in editor"
+        )
+
+        with patch(
+            "spaiOS.core.llm.chat_with_tools",
+            side_effect=_dispatch_caller("create_folder", {"subpath": "tokyo-project"}),
+        ):
+            orc.ask("set up a workspace for the Tokyo project")
+
+        with patch(
+            "spaiOS.core.llm.chat_with_tools",
+            side_effect=_dispatch_caller(
+                "open_in_editor",
+                {"path": f"{tmp_path}/tokyo-project/main.py"},
+            ),
+        ):
+            result = orc.ask("open the main.py file in the editor")
+
+        assert (tmp_path / "tokyo-project").is_dir()
+        orc._code_agent.open_in_editor.assert_called_once()
+        assert "Opened" in result or "editor" in result.lower()
+
+    def test_open_in_editor_result_returned_to_user(self):
+        orc = Orchestrator(config=_config())
+        orc._code_agent.open_in_editor = MagicMock(
+            return_value="Opened /tmp/test.py in editor"
+        )
+
+        with patch(
+            "spaiOS.core.llm.chat_with_tools",
+            side_effect=_dispatch_caller("open_in_editor", {"path": "/tmp/test.py"}),
+        ):
+            result = orc.ask("open /tmp/test.py in the editor")
+
+        assert "/tmp/test.py" in result
+
+
 # ── S6: Config Switching (Anthropic) ─────────────────────────────────────────
 
 
