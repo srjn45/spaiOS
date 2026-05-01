@@ -389,6 +389,12 @@ class Orchestrator:
             return ""
         return "\n---\n".join(sessions)
 
+    def remember_snippet(self, text: str) -> str:
+        if self._memory is None:
+            return "Memory is not available."
+        self._memory.store_snippet(text)
+        return f"Remembered: {text}"
+
     def end_session(self) -> None:
         if self._memory is not None and self._history:
             import datetime

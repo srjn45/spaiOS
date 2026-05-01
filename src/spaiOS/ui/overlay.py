@@ -148,6 +148,19 @@ class Overlay(QMainWindow):
             self._reset_idle_timer()
             return
 
+        if prompt.strip().lower().startswith("/remember "):
+            text = prompt.strip()[len("/remember "):].strip()
+            if text:
+                msg = self._orchestrator.remember_snippet(text)
+            else:
+                msg = "Usage: /remember <something to remember>"
+            self._input_row.clear()
+            self._response_view.show_response(msg)
+            self._input_row.set_enabled(True)
+            self._input_row.focus()
+            self._reset_idle_timer()
+            return
+
         self._input_row.set_enabled(False)
         self._input_row.set_placeholder("Ask anything…")
         self._response_view.clear()
