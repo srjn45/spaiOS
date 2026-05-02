@@ -3,12 +3,16 @@ mod state;
 use std::{os::fd::AsFd, sync::Arc};
 
 use smithay::{
+    backend::{
+        renderer::{gles::GlesRenderer, Color32F, Frame, Renderer},
+        winit::{self, WinitEvent},
+    },
     output::{Mode as OutputMode, Output, PhysicalProperties, Scale, Subpixel},
     reexports::{
         calloop::{generic::Generic, EventLoop, Interest, Mode, PostAction},
         wayland_server::{Display, ListeningSocket},
     },
-    utils::{Point, Transform},
+    utils::{Point, Rectangle, Transform},
 };
 use state::{CalloopData, ClientState, SpaiState};
 use tracing::info;
@@ -17,12 +21,37 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
     info!("spai-compositor starting");
 
+    let (mut backend, mut winit_evt_loop) =
+        winit::init::<GlesRenderer>().map_err(|e| anyhow::anyhow!("{e}"))? ;
+    info!("Winit window {}×{}", backend.window_size().w, backend.window_size().h);
+
     let mut event_loop: EventLoop<'_, CalloopData> = EventLoop::try_new()?;
     let display: Display<SpaiState> = Display::new()?;
-
     let display_fd = display.as_fd().try_clone_to_owned()?;
     let state = SpaiState::new(&display.handle());
     let mut data = CalloopData { state, display };
+
+    // Output sized to the winit window
+    let win_size = backend.window_size();
+    let mode = OutputMode { size: win_size, refresh: 60_000 };
+    let output = Output::new(
+        "winit-1".into(),
+        PhysicalProperties {
+            size: (0, 0).into(),
+            subpixel: Subpixel::Unknown,
+            make: "spai".into(),
+            model: "winit".into(),
+        },
+    );
+    output.set_preferred(mode);
+    output.change_current_state(
+        Some(mode),
+        Some(Transform::Normal),
+        Some(Scale::Integer(1)),
+        Some(Point::from((0, 0))),
+    );
+    output.create_global::<SpaiState>(&data.display.handle());
+    info!("Output registered: {}×{}", win_size.w, win_size.h);
 
     let listening_socket = ListeningSocket::bind("wayland-spai")
         .unwrap_or_else(|_| ListeningSocket::bind_auto("wayland", 1..).expect("no socket"));
@@ -30,7 +59,7 @@ fn main() -> anyhow::Result<()> {
         .socket_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "wayland-spai".into());
-    info!("Wayland socket: WAYLAND_DISPLAY={}", socket_name);
+    info!("WAYLAND_DISPLAY={}", socket_name);
 
     event_loop.handle().insert_source(
         Generic::new(listening_socket, Interest::READ, Mode::Level),
@@ -53,27 +82,6 @@ fn main() -> anyhow::Result<()> {
         },
     )?;
 
-    // Virtual output — clients need at least one wl_output to configure their surfaces
-    let output = Output::new(
-        "virtual-1".into(),
-        PhysicalProperties {
-            size: (0, 0).into(),
-            subpixel: Subpixel::Unknown,
-            make: "spai".into(),
-            model: "virtual".into(),
-        },
-    );
-    let mode = OutputMode { size: (1920, 1080).into(), refresh: 60_000 };
-    output.set_preferred(mode);
-    output.change_current_state(
-        Some(mode),
-        Some(Transform::Normal),
-        Some(Scale::Integer(1)),
-        Some(Point::from((0, 0))),
-    );
-    output.create_global::<SpaiState>(&data.display.handle());
-    info!("Virtual output 1920×1080@60 registered");
-
     info!("Ready. Run: WAYLAND_DISPLAY={} weston-terminal", socket_name);
 
     event_loop.run(
@@ -81,6 +89,25 @@ fn main() -> anyhow::Result<()> {
         &mut data,
         |data| {
             data.display.flush_clients().ok();
+
+            winit_evt_loop.dispatch_new_events(|event| {
+                if let WinitEvent::CloseRequested = event {
+                    info!("Window close requested");
+                }
+            });
+
+            // Render a frame: dark background (client surfaces added later)
+            let size = backend.window_size();
+            {
+                if let Ok((renderer, mut fb)) = backend.bind() {
+                    if let Ok(mut frame) = renderer.render(&mut fb, size, Transform::Normal) {
+                        let full = Rectangle::new((0, 0).into(), size);
+                        frame.clear(Color32F::from([0.05, 0.05, 0.10, 1.0]), &[full]).ok();
+                        frame.finish().ok();
+                    }
+                }
+            }
+            backend.submit(None).ok();
         },
     )?;
 
