@@ -1,6 +1,0 @@
-smithay::reexports::wayland_server::Dispatch<smithay::reexports::wayland_protocols::xdg::shell::server::xdg_popup::XdgPopup, XdgShellSurfaceUserData, D>
-smithay::reexports::wayland_server::Dispatch<smithay::reexports::wayland_protocols::xdg::shell::server::xdg_positioner::XdgPositioner, XdgPositionerUserData, D>
-smithay::reexports::wayland_server::Dispatch<smithay::reexports::wayland_protocols::xdg::shell::server::xdg_surface::XdgSurface, XdgSurfaceUserData, D>
-smithay::reexports::wayland_server::Dispatch<smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel::XdgToplevel, XdgShellSurfaceUserData, D>
-smithay::reexports::wayland_server::Dispatch<smithay::reexports::wayland_protocols::xdg::shell::server::xdg_wm_base::XdgWmBase, XdgWmBaseUserData, D>
-smithay::reexports::wayland_server::Dispatch<smithay::reexports::wayland_protocols::xdg::shell::server::xdg_popup::XdgPopup, XdgShellSurfaceUserData, SpaiState>
