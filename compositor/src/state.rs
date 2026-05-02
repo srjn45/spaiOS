@@ -1,5 +1,5 @@
 use smithay::{
-    delegate_compositor, delegate_seat, delegate_shm, delegate_xdg_shell,
+    delegate_compositor, delegate_output, delegate_seat, delegate_shm, delegate_xdg_shell,
     input::{Seat, SeatHandler, SeatState},
     reexports::wayland_server::{
         backend::{ClientData, ClientId, DisconnectReason},
@@ -10,6 +10,7 @@ use smithay::{
     wayland::{
         buffer::BufferHandler,
         compositor::{CompositorClientState, CompositorHandler, CompositorState},
+        output::{OutputHandler, OutputManagerState},
         shell::xdg::{
             PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState,
         },
@@ -23,6 +24,7 @@ pub struct SpaiState {
     pub xdg_shell_state: XdgShellState,
     pub shm_state: ShmState,
     pub seat_state: SeatState<Self>,
+    pub output_manager_state: OutputManagerState,
 }
 
 pub struct CalloopData {
@@ -52,6 +54,7 @@ impl SpaiState {
             xdg_shell_state: XdgShellState::new::<Self>(dh),
             shm_state: ShmState::new::<Self>(dh, vec![]),
             seat_state: SeatState::new(),
+            output_manager_state: OutputManagerState::new_with_xdg_output::<Self>(dh),
         }
     }
 }
@@ -142,3 +145,9 @@ impl XdgShellHandler for SpaiState {
 }
 
 delegate_xdg_shell!(SpaiState);
+
+// ── Output ───────────────────────────────────────────────────────────────────
+
+impl OutputHandler for SpaiState {}
+
+delegate_output!(SpaiState);

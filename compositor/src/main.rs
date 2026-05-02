@@ -2,9 +2,13 @@ mod state;
 
 use std::{os::fd::AsFd, sync::Arc};
 
-use smithay::reexports::{
-    calloop::{generic::Generic, EventLoop, Interest, Mode, PostAction},
-    wayland_server::{Display, ListeningSocket},
+use smithay::{
+    output::{Mode as OutputMode, Output, PhysicalProperties, Scale, Subpixel},
+    reexports::{
+        calloop::{generic::Generic, EventLoop, Interest, Mode, PostAction},
+        wayland_server::{Display, ListeningSocket},
+    },
+    utils::{Point, Transform},
 };
 use state::{CalloopData, ClientState, SpaiState};
 use tracing::info;
@@ -48,6 +52,27 @@ fn main() -> anyhow::Result<()> {
             Ok(PostAction::Continue)
         },
     )?;
+
+    // Virtual output — clients need at least one wl_output to configure their surfaces
+    let output = Output::new(
+        "virtual-1".into(),
+        PhysicalProperties {
+            size: (0, 0).into(),
+            subpixel: Subpixel::Unknown,
+            make: "spai".into(),
+            model: "virtual".into(),
+        },
+    );
+    let mode = OutputMode { size: (1920, 1080).into(), refresh: 60_000 };
+    output.set_preferred(mode);
+    output.change_current_state(
+        Some(mode),
+        Some(Transform::Normal),
+        Some(Scale::Integer(1)),
+        Some(Point::from((0, 0))),
+    );
+    output.create_global::<SpaiState>(&data.display.handle());
+    info!("Virtual output 1920×1080@60 registered");
 
     info!("Ready. Run: WAYLAND_DISPLAY={} weston-terminal", socket_name);
 
