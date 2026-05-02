@@ -5,19 +5,25 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 6 (Phase 2 Wrap)
+## Current: Phase 2 — Milestone 7 (Session 23: Live Smoke-Test)
 
-**Goal:** Live overlay smoke-test AC1/2/3/7, then retrospective + Phase 3 task breakdown.
+**Goal:** Live smoke-test of M7 acceptance criteria AC9, AC10, AC11. Document results.
 
-**Notion task:** phase2_m6_wrap
+**Notion task:** phase2_m7_wake_word_setup
 
-**Done (M6 Session 18 — complete):**
-- Session 18: AC audit — added E2E tests for AC3 (age-gate) and AC6 (open-in-editor). 167 tests, all green.
-- All 8 Phase 2 ACs have automated coverage (7 mocked E2E, 1 live-demo only: AC7 voice path).
+**Done (M7 Sessions 21–22 — complete):**
+- Session 21+22 (combined): Full TDD implementation — WakeProfileStore, save_wav, WakeSampleThread,
+  wake_trainer (Whisper calibration), WakeSetupDialog (5-sample wizard), WhisperPollThread,
+  multi-phrase WakeWordListener, /wake-setup overlay command, poll_wake signal wiring in main.py.
+  194 tests, all green.
 
 **Steps (remaining):**
-1. Session 19: Live overlay smoke-test: AC1 (open youtube.com), AC2 (search lo-fi), AC3 (age-gate click), AC7 (voice path through orchestrator). Document results.
-2. Session 20: Retrospective doc, update Notion, write Phase 3 session breakdown.
+1. Session 23: Live smoke-test:
+   - AC9: type `/wake-setup` → dialog opens → record phrase 5× + 3 negatives → check `wake_profile.json` written
+   - AC10: say "Hi Spai" → overlay activates (OWW phonetic detection)
+   - AC11: set up custom phrase (e.g. "Cutto") → say it → overlay activates within ~4 seconds
+   Document pass/fail for each.
+2. Session 24: Phase 2 retrospective doc, update Notion, write Phase 3 session breakdown.
 
 ---
 
