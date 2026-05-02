@@ -259,9 +259,10 @@ class WhisperPollThread(QThread):
             segments, _ = model.transcribe(audio, language="en")
             text = " ".join(seg.text.strip() for seg in segments).strip().lower()
 
+            print(f"[WhisperPoll] heard: '{text}'")
             for wp in self._phrases:
-                target = wp.whisper_target or wp.phrase
-                if target and _fuzzy_match(text, target):
+                targets = [t for t in [wp.whisper_target, wp.phrase] if t]
+                if any(_fuzzy_match(text, t) for t in targets):
                     self.wake.emit(wp.phrase)
                     while not self._queue.empty():
                         try:
@@ -294,7 +295,7 @@ class WakeWordListener(QThread):
         from spaiOS.core.wake_profile import load_profile
 
         profile = load_profile()
-        poll_phrases = [p for p in profile.phrases if p.mode == "whisper_poll"]
+        poll_phrases = [p for p in profile.phrases if p.mode in ("whisper_poll", "oww_whisper")]
 
         poll_queue: _queue.Queue | None = None
         if poll_phrases:

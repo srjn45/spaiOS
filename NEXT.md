@@ -5,25 +5,25 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 2 — Milestone 7 (Session 23: Live Smoke-Test)
+## Current: Phase 3 — Milestone 1 (Compositor Foundation)
 
-**Goal:** Live smoke-test of M7 acceptance criteria AC9, AC10, AC11. Document results.
+**Goal:** Bootstrap the Rust Wayland compositor. Get Smithay's `smallvil` example running, understand
+it fully, then scaffold the spaiOS compositor crate.
 
-**Notion task:** phase2_m7_wake_word_setup
+**Notion task:** phase3_m1_compositor_foundation
 
-**Done (M7 Sessions 21–22 — complete):**
-- Session 21+22 (combined): Full TDD implementation — WakeProfileStore, save_wav, WakeSampleThread,
-  wake_trainer (Whisper calibration), WakeSetupDialog (5-sample wizard), WhisperPollThread,
-  multi-phrase WakeWordListener, /wake-setup overlay command, poll_wake signal wiring in main.py.
-  194 tests, all green.
+**Done (Phase 2 complete — M7 smoke-test notes):**
+- AC9 passed. AC10/AC11 deferred: root causes found, fixes applied (see
+  docs/tasks/2026-05-02-session23-m7-smoke-test.md). Re-test when convenient.
 
-**Steps (remaining):**
-1. Session 23: Live smoke-test:
-   - AC9: type `/wake-setup` → dialog opens → record phrase 5× + 3 negatives → check `wake_profile.json` written
-   - AC10: say "Hi Spai" → overlay activates (OWW phonetic detection)
-   - AC11: set up custom phrase (e.g. "Cutto") → say it → overlay activates within ~4 seconds
-   Document pass/fail for each.
-2. Session 24: Phase 2 retrospective doc, update Notion, write Phase 3 session breakdown.
+**Steps (M1 start):**
+1. Create `compositor/` Rust crate: `cargo new --lib compositor`
+2. Add Smithay dependency (latest stable), verify it compiles
+3. Copy + run Smithay's `smallvil` example — make sure a window can be composited
+4. Read `smallvil` code and annotate key concepts in a task doc
+5. Scaffold `SpaiCompositor` struct replacing `smallvil` boilerplate
+6. Milestone done when: blank Wayland compositor window appears on screen, a test Wayland client
+   (e.g. `weston-terminal`) opens inside it
 
 ---
 

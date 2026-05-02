@@ -26,7 +26,7 @@ from spaiOS.ui import tokens
 _POS_SAMPLES = 5
 _NEG_SAMPLES = 3
 
-_OWW_COMPATIBLE = {"hi spai", "hey spai", "hey jarvis", "alexa", "hey mycroft"}
+_OWW_COMPATIBLE = {"hey jarvis", "alexa", "hey mycroft"}
 
 
 def assign_wake_mode(phrase: str) -> str:

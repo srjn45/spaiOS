@@ -3,9 +3,10 @@ import pytest
 
 # ── assign_wake_mode ──────────────────────────────────────────────────────────
 
-def test_hi_spai_is_oww_whisper():
+def test_hi_spai_is_whisper_poll():
     from spaiOS.ui.wake_setup import assign_wake_mode
-    assert assign_wake_mode("hi spai") == "oww_whisper"
+    # OWW has no model for "hi spai" — use Whisper polling instead
+    assert assign_wake_mode("hi spai") == "whisper_poll"
 
 
 def test_hey_jarvis_is_oww_whisper():
