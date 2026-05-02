@@ -162,6 +162,14 @@ class Overlay(QMainWindow):
             self._reset_idle_timer()
             return
 
+        if prompt.strip().lower() == "/wake-setup":
+            self._input_row.clear()
+            self._input_row.set_enabled(True)
+            self._input_row.focus()
+            self._reset_idle_timer()
+            self._show_wake_setup()
+            return
+
         self._input_row.set_enabled(False)
         self._input_row.set_placeholder("Ask anything…")
         self._response_view.clear()
@@ -299,6 +307,36 @@ class Overlay(QMainWindow):
                 pass
             self._active_thread = None
         self._sphere.set_state("idle")
+        self._input_row.set_enabled(True)
+        self._input_row.focus()
+        self._reset_idle_timer()
+
+    def _show_wake_setup(self) -> None:
+        from spaiOS.ui.wake_setup import WakeSetupDialog
+        dlg = WakeSetupDialog(self)
+        dlg.setup_complete.connect(self._on_wake_setup_complete)
+        dlg.exec()
+
+    def _on_wake_setup_complete(self, profile) -> None:
+        count = len(profile.phrases)
+        self._response_view.show_response(
+            f"Wake word updated — {count} trigger phrase(s) active.\n"
+            "Restart spaiOS for the new phrase to take effect."
+        )
+
+    @pyqtSlot()
+    def on_poll_wake_word(self) -> None:
+        if not self.isVisible():
+            super().show()
+            self._start_fade_in()
+            self.raise_()
+            self.activateWindow()
+        self._idle_timer.stop()
+        self._sphere.set_state("idle")
+        self._response_view.show_response(
+            "Custom wake phrase detected — type your command or press "
+            "Super+Shift+Space to speak."
+        )
         self._input_row.set_enabled(True)
         self._input_row.focus()
         self._reset_idle_timer()

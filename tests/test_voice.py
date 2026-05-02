@@ -191,3 +191,33 @@ def test_save_wav_creates_parent_dirs(tmp_path):
     path = tmp_path / "nested" / "dir" / "out.wav"
     save_wav(np.zeros(1600, dtype=np.float32), path)
     assert path.exists()
+
+
+# ── _fuzzy_match ──────────────────────────────────────────────────────────────
+
+
+def test_fuzzy_match_exact():
+    from spaiOS.core.voice import _fuzzy_match
+    assert _fuzzy_match("hi spai", "hi spai") is True
+
+
+def test_fuzzy_match_accent_variant():
+    from spaiOS.core.voice import _fuzzy_match
+    # "hi spy" should match "hi spai" (ratio ~0.77, above 0.6 threshold)
+    assert _fuzzy_match("hi spy", "hi spai") is True
+
+
+def test_fuzzy_match_phrase_in_longer_text():
+    from spaiOS.core.voice import _fuzzy_match
+    # "hey cutto" vs "cutto" → ratio ~0.71
+    assert _fuzzy_match("hey cutto", "cutto") is True
+
+
+def test_fuzzy_match_unrelated_text():
+    from spaiOS.core.voice import _fuzzy_match
+    assert _fuzzy_match("what is the weather", "cutto") is False
+
+
+def test_fuzzy_match_case_insensitive():
+    from spaiOS.core.voice import _fuzzy_match
+    assert _fuzzy_match("Hi Spai", "hi spai") is True

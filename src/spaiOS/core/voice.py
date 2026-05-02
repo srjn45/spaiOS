@@ -1,3 +1,4 @@
+import queue as _queue
 import urllib.request
 import wave
 from pathlib import Path
@@ -214,16 +215,94 @@ class WakeSampleThread(QThread):
         self.done.emit(audio.flatten().copy())
 
 
+def _fuzzy_match(text: str, target: str, threshold: float = 0.6) -> bool:
+    from difflib import SequenceMatcher
+    return SequenceMatcher(None, text.lower(), target.lower()).ratio() >= threshold
+
+
+class WhisperPollThread(QThread):
+    """Background Whisper-based phrase detection for whisper_poll phrases.
+
+    Reads int16 audio chunks from `audio_queue` (fed by WakeWordListener),
+    transcribes every ~3 seconds, and emits `wake` with the matched phrase text.
+    """
+
+    wake = pyqtSignal(str)
+
+    def __init__(self, phrases: list, audio_queue: _queue.Queue) -> None:
+        super().__init__()
+        self._phrases = phrases  # list[WakePhrase]
+        self._queue = audio_queue
+        self._running = False
+
+    def run(self) -> None:
+        import time
+
+        self._running = True
+        _chunks_per_3s = max(1, int(3 * _SAMPLE_RATE / _OWW_CHUNK))  # ≈ 37
+
+        while self._running:
+            buffer: list[np.ndarray] = []
+            for _ in range(_chunks_per_3s):
+                try:
+                    chunk = self._queue.get(timeout=0.5)
+                    buffer.append(chunk)
+                except _queue.Empty:
+                    if not self._running:
+                        return
+
+            if not buffer or not self._running:
+                continue
+
+            audio = np.concatenate(buffer).astype(np.float32) / 32768.0
+            model = _get_whisper_model()
+            segments, _ = model.transcribe(audio, language="en")
+            text = " ".join(seg.text.strip() for seg in segments).strip().lower()
+
+            for wp in self._phrases:
+                target = wp.whisper_target or wp.phrase
+                if target and _fuzzy_match(text, target):
+                    self.wake.emit(wp.phrase)
+                    while not self._queue.empty():
+                        try:
+                            self._queue.get_nowait()
+                        except _queue.Empty:
+                            break
+                    time.sleep(2)
+                    break
+
+    def stop(self) -> None:
+        self._running = False
+        self.wait()
+
+
 class WakeWordListener(QThread):
     wake = pyqtSignal()
+    poll_wake = pyqtSignal()  # fired by WhisperPollThread for whisper_poll phrases
     # Emits (audio: np.ndarray, noise_profile: np.ndarray) once end-of-speech is detected.
     audio_ready = pyqtSignal(object, object)
 
     def __init__(self) -> None:
         super().__init__()
         self._running = False
+        self._poll_thread: WhisperPollThread | None = None
+
+    def _on_poll_wake(self, _phrase: str) -> None:
+        self.poll_wake.emit()
 
     def run(self) -> None:
+        from spaiOS.core.wake_profile import load_profile
+
+        profile = load_profile()
+        poll_phrases = [p for p in profile.phrases if p.mode == "whisper_poll"]
+
+        poll_queue: _queue.Queue | None = None
+        if poll_phrases:
+            poll_queue = _queue.Queue(maxsize=200)
+            self._poll_thread = WhisperPollThread(poll_phrases, poll_queue)
+            self._poll_thread.wake.connect(self._on_poll_wake)
+            self._poll_thread.start()
+
         from openwakeword.model import Model  # lazy — large import, not needed in tests
         import openwakeword
 
@@ -241,7 +320,6 @@ class WakeWordListener(QThread):
             dtype="int16",
             channels=_CHANNELS,
         ) as stream:
-            # ── Noise profile calibration ──────────────────────────────────────
             noise_frames: list[np.ndarray] = []
             noise_target = int(_NOISE_PROFILE_S * _SAMPLE_RATE / _OWW_CHUNK)
             print("[spaiOS] Calibrating ambient noise profile…")
@@ -253,11 +331,8 @@ class WakeWordListener(QThread):
                 )
                 noise_frames.append(chunk)
             noise_profile = np.concatenate(noise_frames)
-            print(
-                "[spaiOS] Noise profile ready. Wake word listener active — say 'hey Jarvis'"
-            )
+            print("[spaiOS] Noise profile ready. Wake word listener active.")
 
-            # ── Main loop ──────────────────────────────────────────────────────
             in_utterance = False
             utterance_frames: list[bytes] = []
             utterance_n = 0
@@ -271,13 +346,19 @@ class WakeWordListener(QThread):
                 raw = bytes(data)
                 pcm16 = np.frombuffer(raw, dtype="int16")
 
+                # Feed whisper_poll thread when not mid-utterance
+                if poll_queue is not None and not in_utterance:
+                    try:
+                        poll_queue.put_nowait(pcm16)
+                    except _queue.Full:
+                        pass
+
                 if in_utterance:
                     utterance_frames.append(raw)
                     float_chunk = pcm16.astype(np.float32) / 32768.0
                     utterance_n += len(pcm16)
                     vad_buffer.extend(float_chunk.tolist())
 
-                    # Run VAD on 512-sample windows
                     while len(vad_buffer) >= _VAD_CHUNK:
                         window = np.array(vad_buffer[:_VAD_CHUNK], dtype=np.float32)
                         vad_buffer = vad_buffer[_VAD_CHUNK:]
@@ -295,17 +376,14 @@ class WakeWordListener(QThread):
                             end="\r",
                         )
 
-                    end_by_vad = (
-                        speech_detected and silence_chunks >= _VAD_SILENCE_CHUNKS
-                    )
+                    end_by_vad = speech_detected and silence_chunks >= _VAD_SILENCE_CHUNKS
                     end_by_timeout = utterance_n >= _utterance_max
 
                     if end_by_vad or end_by_timeout:
                         reason = "VAD silence" if end_by_vad else "12s timeout"
                         audio = (
-                            np.frombuffer(
-                                b"".join(utterance_frames), dtype="int16"
-                            ).astype(np.float32)
+                            np.frombuffer(b"".join(utterance_frames), dtype="int16")
+                            .astype(np.float32)
                             / 32768.0
                         )
                         print(
@@ -337,6 +415,9 @@ class WakeWordListener(QThread):
                         vad.reset()
                         oww.reset()
                         self.wake.emit()
+
+        if self._poll_thread is not None:
+            self._poll_thread.stop()
 
     def stop(self) -> None:
         self._running = False

@@ -29,6 +29,7 @@ def main() -> None:
     wake_listener = WakeWordListener()
     wake_listener.wake.connect(overlay.on_wake_word)
     wake_listener.audio_ready.connect(overlay.on_wake_audio_ready)
+    wake_listener.poll_wake.connect(overlay.on_poll_wake_word)
     wake_listener.start()
     overlay.set_wake_listener_active(True)
 
