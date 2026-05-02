@@ -16,14 +16,18 @@ it fully, then scaffold the spaiOS compositor crate.
 - AC9 passed. AC10/AC11 deferred: root causes found, fixes applied (see
   docs/tasks/2026-05-02-session23-m7-smoke-test.md). Re-test when convenient.
 
-**Steps (M1 start):**
-1. Create `compositor/` Rust crate: `cargo new --lib compositor`
-2. Add Smithay dependency (latest stable), verify it compiles
-3. Copy + run Smithay's `smallvil` example — make sure a window can be composited
-4. Read `smallvil` code and annotate key concepts in a task doc
-5. Scaffold `SpaiCompositor` struct replacing `smallvil` boilerplate
-6. Milestone done when: blank Wayland compositor window appears on screen, a test Wayland client
-   (e.g. `weston-terminal`) opens inside it
+**Done (Session 24):**
+- `compositor/` crate created with Smithay 0.7, calloop 0.14, wayland-server 0.31
+- `SpaiState` wires CompositorHandler + ShmHandler + SeatHandler + XdgShellHandler
+- `ListeningSocket` on `WAYLAND_DISPLAY=wayland-spai`; calloop event loop running
+- `cargo build` passes cleanly
+
+**Steps (remaining for M1):**
+1. Run `cargo run` in compositor/ and test: `WAYLAND_DISPLAY=wayland-spai weston-terminal`
+2. Add `OutputManagerState` + a virtual output so clients configure correctly
+3. Add `wl_seat` with keyboard — so `weston-terminal` can receive input
+4. Add Winit backend window (render client surfaces into a host window for dev testing)
+5. Milestone done when: `weston-terminal` opens inside the compositor window and accepts text
 
 ---
 
