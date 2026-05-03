@@ -60,17 +60,19 @@ Do not use markdown code blocks — plain text only.`
 
 const overlaySystemPrompt = `You are spaiOS, an AI assistant running as a desktop overlay on the user's Linux desktop.
 
-When the user asks you to control a window or launch an app, output a TOOL_CALL line first, then your confirmation:
+When the user asks you to control a window or launch an app, output a TOOL_CALL line before your reply.
+The TOOL_CALL line contains ONLY the JSON — nothing else on that line.
 
-TOOL_CALL: {"tool":"snap_window","side":"left"}                        — snap the focused window to left half
-TOOL_CALL: {"tool":"snap_window","side":"right"}                       — snap the focused window to right half
-TOOL_CALL: {"tool":"snap_window","side":"top"}                         — snap the focused window to top half
-TOOL_CALL: {"tool":"snap_window","side":"bottom"}                      — snap the focused window to bottom half
-TOOL_CALL: {"tool":"snap_window","side":"left","target":"Firefox"}     — snap a named window to left half
-TOOL_CALL: {"tool":"maximize_window"}                                  — maximize the focused window
-TOOL_CALL: {"tool":"maximize_window","target":"Firefox"}               — maximize a named window
-TOOL_CALL: {"tool":"close_window","target":"Firefox"}                  — close a named window
-TOOL_CALL: {"tool":"open_app","app":"firefox"}                         — launch an application by binary name
+Available tools (JSON only on the TOOL_CALL line):
+TOOL_CALL: {"tool":"snap_window","side":"left"}
+TOOL_CALL: {"tool":"snap_window","side":"right"}
+TOOL_CALL: {"tool":"snap_window","side":"top"}
+TOOL_CALL: {"tool":"snap_window","side":"bottom"}
+TOOL_CALL: {"tool":"snap_window","side":"left","target":"Firefox"}
+TOOL_CALL: {"tool":"maximize_window"}
+TOOL_CALL: {"tool":"maximize_window","target":"Firefox"}
+TOOL_CALL: {"tool":"close_window","target":"Firefox"}
+TOOL_CALL: {"tool":"open_app","app":"firefox"}
 
 Rules:
 - When the user names a specific app (e.g. "Firefox", "Chrome", "Warp"), always set "target" to that name.
@@ -105,13 +107,22 @@ func shellUserMessage(ev *protocol.ShellEvent) string {
 // executeWindowTool parses the JSON from a TOOL_CALL line and runs the tool.
 // Returns a short status string for logging; errors are surfaced there only (not to user).
 func executeWindowTool(jsonStr string, activeWinID string) string {
+	// Models sometimes append comments after the JSON (e.g. "{"tool":"x"} — do thing").
+	// Extract just the first complete JSON object so trailing garbage doesn't break parsing.
+	start := strings.Index(jsonStr, "{")
+	end := strings.LastIndex(jsonStr, "}")
+	if start < 0 || end < start {
+		return fmt.Sprintf("parse error: no JSON object found in %q", jsonStr)
+	}
+	jsonStr = jsonStr[start : end+1]
+
 	var call struct {
 		Tool   string `json:"tool"`
 		Side   string `json:"side,omitempty"`
 		App    string `json:"app,omitempty"`
 		Target string `json:"target,omitempty"` // window name to search for via wmctrl
 	}
-	if err := json.NewDecoder(strings.NewReader(jsonStr)).Decode(&call); err != nil {
+	if err := json.Unmarshal([]byte(jsonStr), &call); err != nil {
 		return fmt.Sprintf("parse error: %v", err)
 	}
 
@@ -195,6 +206,7 @@ func buildOverlayMessages(q *protocol.OverlayQuery, sess *session.Session) []ai.
 	if q.ActiveWindow != nil && q.ActiveWindow.Title != "" {
 		sysMsg += fmt.Sprintf("\n\nActive window: %s (win_id: %s)", q.ActiveWindow.Title, q.ActiveWindow.WinID)
 	}
+	sess.Trim(6) // keep at most 3 exchanges — small local models overflow on long contexts
 	msgs := []ai.Message{{Role: "system", Content: sysMsg}}
 	msgs = append(msgs, sess.MessagesForPrompt()...)
 	msgs = append(msgs, ai.Message{Role: "user", Content: q.Query})
