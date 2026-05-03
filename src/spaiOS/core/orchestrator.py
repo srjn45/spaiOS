@@ -1,10 +1,12 @@
 import base64
+import logging
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from spaiOS.core import context as ctx
 from spaiOS.core import llm
 from spaiOS.core.config import AppConfig, load_config
+from spaiOS.core.spaid_client import ResponseEvent, SpaidClient
 from spaiOS.agents.chrome_agent import ChromeAgent, ChromeNotAvailable
 from spaiOS.agents.code_agent import (
     CodeAgent,
@@ -13,6 +15,8 @@ from spaiOS.agents.code_agent import (
 )
 from spaiOS.agents.file_agent import DeleteConfirmationRequired, FileAgent, FileEntry
 from spaiOS.agents.media_agent import MediaAgent
+
+log = logging.getLogger(__name__)
 
 
 class _LoopInterrupt(Exception):
@@ -547,7 +551,12 @@ _DENY_WORDS = {"no", "n", "cancel", "nope", "nah", "stop"}
 class Orchestrator:
     _MAX_HISTORY_PAIRS = 10
 
-    def __init__(self, memory=None, config: AppConfig | None = None) -> None:
+    def __init__(
+        self,
+        memory=None,
+        config: AppConfig | None = None,
+        spaid_client: SpaidClient | None = None,
+    ) -> None:
         self._config = config or load_config()
         self._history: list[dict] = []
         self._file_agent = FileAgent()
@@ -558,6 +567,7 @@ class Orchestrator:
         self._pending_write: tuple[str, str, str] | None = None
         self._memory = memory
         self._memory_context: str = self._load_memory_context()
+        self._spaid_client = spaid_client
 
     def _load_memory_context(self) -> str:
         if self._memory is None:
@@ -592,6 +602,33 @@ class Orchestrator:
         if self._pending_delete is not None:
             return self._handle_delete_response(prompt)
 
+        if self._spaid_client is not None and self._spaid_client.is_available():
+            try:
+                return self._ask_via_spaid(prompt)
+            except Exception as exc:
+                log.warning("spaid unavailable (%s), falling back to direct LLM", exc)
+
+        return self._ask_direct(prompt)
+
+    def _ask_via_spaid(self, prompt: str) -> str:
+        active_window = self._spaid_client.get_active_window()
+        text_parts: list[str] = []
+        for event in self._spaid_client.query(prompt, active_window):
+            if event.type == "text":
+                text_parts.append(event.content)
+            elif event.type == "tool_call":
+                self._execute_tool_call(event)
+            elif event.type == "error":
+                raise RuntimeError(event.content)
+        reply = "".join(text_parts)
+        self._append_history(prompt, reply)
+        return reply
+
+    def _execute_tool_call(self, event: ResponseEvent) -> None:
+        # M1 stub — xdotool/wmctrl execution added in M2
+        log.info("tool_call (stub): tool=%s params=%s", event.tool, event.params)
+
+    def _ask_direct(self, prompt: str) -> str:
         ctx_data = ctx.capture()
         system_prompt = _build_system_prompt(ctx_data, self._memory_context)
         messages: list[dict] = []
@@ -599,15 +636,16 @@ class Orchestrator:
             messages.append({"role": "system", "content": system_prompt})
         messages.extend(self._history)
         messages.append({"role": "user", "content": prompt})
-
         reply = self._run_with_tools(messages)
+        self._append_history(prompt, reply)
+        return reply
 
+    def _append_history(self, prompt: str, reply: str) -> None:
         self._history.append({"role": "user", "content": prompt})
         self._history.append({"role": "assistant", "content": reply})
         max_msgs = self._MAX_HISTORY_PAIRS * 2
         if len(self._history) > max_msgs:
             self._history = self._history[-max_msgs:]
-        return reply
 
     def _run_with_tools(self, messages: list[dict]) -> str:
         try:

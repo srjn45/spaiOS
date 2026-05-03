@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 
 from spaiOS.core.orchestrator import AskThread, AskWithVisionThread, Orchestrator
 from spaiOS.core.orchestrator import is_clarifying_question
+from spaiOS.core.spaid_client import SpaidClient
 from spaiOS.core.screen_capture import capture_jpeg
 from spaiOS.core.voice import (
     AudioTranscribeThread,
@@ -40,7 +41,7 @@ class Overlay(QMainWindow):
         except Exception as exc:
             print(f"[spaiOS] Memory unavailable: {exc}")
             _memory = None
-        self._orchestrator = Orchestrator(memory=_memory)
+        self._orchestrator = Orchestrator(memory=_memory, spaid_client=SpaidClient())
         self._active_thread: AskThread | AskWithVisionThread | None = None
         self._voice_recorder = VoiceRecorder()
         self._voice_thread: VoiceTranscribeThread | AudioTranscribeThread | None = None
@@ -313,6 +314,7 @@ class Overlay(QMainWindow):
 
     def _show_wake_setup(self) -> None:
         from spaiOS.ui.wake_setup import WakeSetupDialog
+
         dlg = WakeSetupDialog(self)
         dlg.setup_complete.connect(self._on_wake_setup_complete)
         dlg.exec()
