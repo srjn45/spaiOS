@@ -42,10 +42,10 @@ Overridable via environment variables for CI or non-standard layouts.
 
 ## Done When
 
-- [ ] `./scripts/spai-install.sh install` completes cleanly on fresh state
-- [ ] `spaid` systemd service running after install: `systemctl --user status spaid`
-- [ ] spaiOS autostart entry present: `~/.config/autostart/spaios.desktop`
-- [ ] `./scripts/spai-install.sh uninstall` removes all installed files, leaves config
-- [ ] `./scripts/spai-install.sh reinstall` = clean uninstall + fresh install
-- [ ] Missing dep prints helpful error (not a cryptic Go build failure)
-- [ ] Full cycle completes in under 2 minutes on dev machine
+- [x] `./scripts/spai-install.sh install` completes cleanly on fresh state
+- [x] `spaid` systemd service running after install: `systemctl --user status spaid`
+- [x] spaiOS autostart entry present: `~/.config/autostart/spaios.desktop`
+- [x] `./scripts/spai-install.sh uninstall` removes all installed files, leaves config
+- [x] `./scripts/spai-install.sh reinstall` = clean uninstall + fresh install
+- [x] Missing dep prints helpful error (not a cryptic Go build failure)
+- [x] Full cycle completes in under 2 minutes on dev machine (4s actual)

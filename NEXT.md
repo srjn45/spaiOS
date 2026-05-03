@@ -22,8 +22,8 @@ execution, windows snap on command.
 |---|---|---|---|
 | M1 | spaid-overlay bridge | **Done** | spaiOS + spaiSH |
 | M2 | Window management tools | **Done** | spaiSH |
-| M3 | Unified installer | **Next** | spaiOS |
-| M4 | LiteLLM multi-model routing | Blocked on M3 | spaiSH |
+| M3 | Unified installer | **Done** | spaiOS |
+| M4 | LiteLLM multi-model routing | **Next** | spaiSH |
 | M5 | Full loop polish + demo | Last | both |
 
 ---
@@ -60,6 +60,27 @@ execution, windows snap on command.
 - [ ] Live test: "snap Firefox to the left" → window snaps ← **verify after `apt install wmctrl`**
 - [ ] Live test: "open gedit" → gedit launches
 - [ ] M1 smoke test: spaid receives overlay_query, text renders in overlay ← **still pending**
+
+---
+
+## M3 What Was Done (2026-05-03)
+
+- `scripts/spai-install.sh` — three-mode installer (install/uninstall/reinstall)
+- Builds `spai`, `spaid`, `spaish` Go binaries → `~/.local/bin/`
+- Installs spaiOS Python package via `uv pip install -e .`
+- Writes `~/.config/systemd/user/spaid.service` and enables/starts it
+- Writes `~/.config/autostart/spaios.desktop` for login autostart
+- Copies default config to `~/.config/spaish/spaid.toml` if not present
+- Dep check at top: prints friendly error + apt hint if xdotool/wmctrl/go/uv missing
+
+**M3 AC status:**
+- [x] `install` completes cleanly
+- [x] `spaid` service active after install
+- [x] autostart entry written
+- [x] `uninstall` removes binaries + autostart, preserves config
+- [x] `reinstall` = uninstall + install
+- [x] missing dep prints helpful error
+- [x] full cycle: 4s (< 2 min)
 
 ---
 
