@@ -58,6 +58,60 @@ func SnapRight(winID string) error {
 	return snapTo(winID, half, 0, sw-half, sh)
 }
 
+// SnapTop snaps the window to the top half of the screen.
+func SnapTop(winID string) error {
+	sw, sh, err := ScreenGeometry()
+	if err != nil {
+		return err
+	}
+	return snapTo(winID, 0, 0, sw, sh/2)
+}
+
+// SnapBottom snaps the window to the bottom half of the screen.
+func SnapBottom(winID string) error {
+	sw, sh, err := ScreenGeometry()
+	if err != nil {
+		return err
+	}
+	half := sh / 2
+	return snapTo(winID, 0, half, sw, sh-half)
+}
+
+// FindWindowByName searches wmctrl -l output for the first window whose title
+// contains name (case-insensitive). Returns the hex window ID.
+func FindWindowByName(name string) (string, error) {
+	out, err := exec.Command("wmctrl", "-l").Output()
+	if err != nil {
+		return "", fmt.Errorf("wmctrl -l: %w", err)
+	}
+	lower := strings.ToLower(name)
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// wmctrl -l format: 0x<id>  <desktop>  <hostname>  <title...>
+		parts := strings.Fields(line)
+		if len(parts) < 4 {
+			continue
+		}
+		title := strings.Join(parts[3:], " ")
+		if strings.Contains(strings.ToLower(title), lower) {
+			return parts[0], nil
+		}
+	}
+	return "", fmt.Errorf("no window matching %q", name)
+}
+
+// GetWindowTitle returns the title of the window with the given hex ID, or empty on error.
+func GetWindowTitle(winID string) string {
+	out, err := exec.Command("xdotool", "getwindowname", winID).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // MaximizeWindow maximizes the window.
 func MaximizeWindow(winID string) error {
 	if _, err := exec.LookPath("wmctrl"); err == nil {

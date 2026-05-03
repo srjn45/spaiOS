@@ -62,15 +62,20 @@ const overlaySystemPrompt = `You are spaiOS, an AI assistant running as a deskto
 
 When the user asks you to control a window or launch an app, output a TOOL_CALL line first, then your confirmation:
 
-TOOL_CALL: {"tool":"snap_window","side":"left"}    — snap active window to left half of screen
-TOOL_CALL: {"tool":"snap_window","side":"right"}   — snap active window to right half of screen
-TOOL_CALL: {"tool":"maximize_window"}              — maximize active window
-TOOL_CALL: {"tool":"close_window"}                 — close active window
-TOOL_CALL: {"tool":"open_app","app":"<name>"}      — launch an application by binary name
+TOOL_CALL: {"tool":"snap_window","side":"left"}                        — snap the focused window to left half
+TOOL_CALL: {"tool":"snap_window","side":"right"}                       — snap the focused window to right half
+TOOL_CALL: {"tool":"snap_window","side":"top"}                         — snap the focused window to top half
+TOOL_CALL: {"tool":"snap_window","side":"bottom"}                      — snap the focused window to bottom half
+TOOL_CALL: {"tool":"snap_window","side":"left","target":"Firefox"}     — snap a named window to left half
+TOOL_CALL: {"tool":"maximize_window"}                                  — maximize the focused window
+TOOL_CALL: {"tool":"maximize_window","target":"Firefox"}               — maximize a named window
+TOOL_CALL: {"tool":"close_window","target":"Firefox"}                  — close a named window
+TOOL_CALL: {"tool":"open_app","app":"firefox"}                         — launch an application by binary name
 
 Rules:
+- When the user names a specific app (e.g. "Firefox", "Chrome", "Warp"), always set "target" to that name.
+- Only omit "target" when the user says "this window" or "the window" with no app name.
 - Output the TOOL_CALL line by itself on its own line, then your 1-2 sentence confirmation.
-- For questions that don't need window control, just answer in plain text.
 - Plain text only, no markdown.`
 
 func shellUserMessage(ev *protocol.ShellEvent) string {
@@ -101,33 +106,48 @@ func shellUserMessage(ev *protocol.ShellEvent) string {
 // Returns a short status string for logging; errors are surfaced there only (not to user).
 func executeWindowTool(jsonStr string, activeWinID string) string {
 	var call struct {
-		Tool string `json:"tool"`
-		Side string `json:"side,omitempty"`
-		App  string `json:"app,omitempty"`
+		Tool   string `json:"tool"`
+		Side   string `json:"side,omitempty"`
+		App    string `json:"app,omitempty"`
+		Target string `json:"target,omitempty"` // window name to search for via wmctrl
 	}
-	// Use Decoder so trailing LLM commentary after the JSON object is ignored.
 	if err := json.NewDecoder(strings.NewReader(jsonStr)).Decode(&call); err != nil {
 		return fmt.Sprintf("parse error: %v", err)
 	}
 
-	// Resolve active window: prefer the ID from the overlay request (already hex).
-	winID := activeWinID
-	if winID == "" {
-		id, err := tools.GetActiveWinIDHex()
-		if err == nil {
-			winID = id
+	// Resolve window ID: named target takes priority, then captured active window.
+	resolveWinID := func() (string, error) {
+		if call.Target != "" {
+			id, err := tools.FindWindowByName(call.Target)
+			if err != nil {
+				return "", fmt.Errorf("window %q not found: %w", call.Target, err)
+			}
+			return id, nil
 		}
+		if activeWinID != "" {
+			return activeWinID, nil
+		}
+		id, err := tools.GetActiveWinIDHex()
+		if err != nil {
+			return "", fmt.Errorf("no active window: %w", err)
+		}
+		return id, nil
 	}
 
 	switch call.Tool {
 	case "snap_window":
-		if winID == "" {
-			return "no active window"
+		winID, err := resolveWinID()
+		if err != nil {
+			return err.Error()
 		}
-		var err error
-		if call.Side == "right" {
+		switch call.Side {
+		case "right":
 			err = tools.SnapRight(winID)
-		} else {
+		case "top":
+			err = tools.SnapTop(winID)
+		case "bottom":
+			err = tools.SnapBottom(winID)
+		default: // "left" or unspecified
 			err = tools.SnapLeft(winID)
 		}
 		if err != nil {
@@ -136,8 +156,9 @@ func executeWindowTool(jsonStr string, activeWinID string) string {
 		return "snapped " + call.Side
 
 	case "maximize_window":
-		if winID == "" {
-			return "no active window"
+		winID, err := resolveWinID()
+		if err != nil {
+			return err.Error()
 		}
 		if err := tools.MaximizeWindow(winID); err != nil {
 			return fmt.Sprintf("maximize error: %v", err)
@@ -145,8 +166,13 @@ func executeWindowTool(jsonStr string, activeWinID string) string {
 		return "maximized"
 
 	case "close_window":
-		if winID == "" {
-			return "no active window"
+		winID, err := resolveWinID()
+		if err != nil {
+			return err.Error()
+		}
+		// Safety guard: never close the spaiOS overlay window.
+		if title := tools.GetWindowTitle(winID); strings.Contains(strings.ToLower(title), "spaios") {
+			return "refused: cannot close spaiOS overlay"
 		}
 		if err := tools.CloseWindow(winID); err != nil {
 			return fmt.Sprintf("close error: %v", err)
