@@ -21,6 +21,7 @@ import (
 	"spaish/internal/router"
 	"spaish/internal/session"
 	"spaish/internal/socket"
+	"spaish/internal/tools"
 )
 
 func configPath() string {
@@ -58,9 +59,19 @@ When suggesting a specific command, wrap it in backticks.
 Do not use markdown code blocks — plain text only.`
 
 const overlaySystemPrompt = `You are spaiOS, an AI assistant running as a desktop overlay on the user's Linux desktop.
-Be concise — 1-2 sentences unless the user asks for more detail.
-When you act on a window or launch an app, confirm it briefly.
-Plain text only, no markdown.`
+
+When the user asks you to control a window or launch an app, output a TOOL_CALL line first, then your confirmation:
+
+TOOL_CALL: {"tool":"snap_window","side":"left"}    — snap active window to left half of screen
+TOOL_CALL: {"tool":"snap_window","side":"right"}   — snap active window to right half of screen
+TOOL_CALL: {"tool":"maximize_window"}              — maximize active window
+TOOL_CALL: {"tool":"close_window"}                 — close active window
+TOOL_CALL: {"tool":"open_app","app":"<name>"}      — launch an application by binary name
+
+Rules:
+- Output the TOOL_CALL line by itself on its own line, then your 1-2 sentence confirmation.
+- For questions that don't need window control, just answer in plain text.
+- Plain text only, no markdown.`
 
 func shellUserMessage(ev *protocol.ShellEvent) string {
 	switch ev.Trigger {
@@ -83,6 +94,72 @@ func shellUserMessage(ev *protocol.ShellEvent) string {
 	default:
 		return fmt.Sprintf("Command: %s\nOutput: %s\nExit code: %d\n\nWhat went wrong and how do I fix it?",
 			ev.Command, ev.Output, ev.ExitCode)
+	}
+}
+
+// executeWindowTool parses the JSON from a TOOL_CALL line and runs the tool.
+// Returns a short status string for logging; errors are surfaced there only (not to user).
+func executeWindowTool(jsonStr string, activeWinID string) string {
+	var call struct {
+		Tool string `json:"tool"`
+		Side string `json:"side,omitempty"`
+		App  string `json:"app,omitempty"`
+	}
+	if err := json.Unmarshal([]byte(jsonStr), &call); err != nil {
+		return fmt.Sprintf("parse error: %v", err)
+	}
+
+	// Resolve active window: prefer the ID from the overlay request (already hex).
+	winID := activeWinID
+	if winID == "" {
+		id, err := tools.GetActiveWinIDHex()
+		if err == nil {
+			winID = id
+		}
+	}
+
+	switch call.Tool {
+	case "snap_window":
+		if winID == "" {
+			return "no active window"
+		}
+		var err error
+		if call.Side == "right" {
+			err = tools.SnapRight(winID)
+		} else {
+			err = tools.SnapLeft(winID)
+		}
+		if err != nil {
+			return fmt.Sprintf("snap error: %v", err)
+		}
+		return "snapped " + call.Side
+
+	case "maximize_window":
+		if winID == "" {
+			return "no active window"
+		}
+		if err := tools.MaximizeWindow(winID); err != nil {
+			return fmt.Sprintf("maximize error: %v", err)
+		}
+		return "maximized"
+
+	case "close_window":
+		if winID == "" {
+			return "no active window"
+		}
+		if err := tools.CloseWindow(winID); err != nil {
+			return fmt.Sprintf("close error: %v", err)
+		}
+		return "closed"
+
+	case "open_app":
+		if err := tools.LaunchApp(call.App); err != nil {
+			return fmt.Sprintf("launch error: %v", err)
+		}
+		return "launched " + call.App
+
+	default:
+		return fmt.Sprintf("unknown tool: %s", call.Tool)
 	}
 }
 
@@ -445,14 +522,38 @@ func main() {
 			return
 		}
 
-		var fullText strings.Builder
+		// Buffer full response so we can parse TOOL_CALL lines before sending text.
+		var rawBuf strings.Builder
 		for chunk := range textCh {
-			fullText.WriteString(chunk)
-			enc.Encode(protocol.Response{Type: "text", Content: chunk})
+			rawBuf.WriteString(chunk)
+		}
+		raw := rawBuf.String()
+
+		// Resolve active window ID for tool execution.
+		activeWinID := ""
+		if q.ActiveWindow != nil {
+			activeWinID = q.ActiveWindow.WinID
+		}
+
+		// Separate TOOL_CALL lines from display text; execute tools in order.
+		var userText strings.Builder
+		for _, line := range strings.Split(raw, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "TOOL_CALL:") {
+				jsonStr := strings.TrimSpace(strings.TrimPrefix(trimmed, "TOOL_CALL:"))
+				status := executeWindowTool(jsonStr, activeWinID)
+				log.Printf("tool_call: %s → %s", jsonStr, status)
+			} else {
+				userText.WriteString(line + "\n")
+			}
+		}
+
+		reply := strings.TrimSpace(userText.String())
+		if reply != "" {
+			enc.Encode(protocol.Response{Type: "text", Content: reply})
 		}
 		enc.Encode(protocol.Response{Type: "done"})
 
-		reply := fullText.String()
 		sess.AddExchange(q.Query, reply)
 		if err := sess.SaveCache(); err != nil {
 			log.Printf("session save error: %v", err)
