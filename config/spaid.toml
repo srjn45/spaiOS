@@ -2,12 +2,14 @@
 # Copy this file to ~/.config/spaish/spaid.toml
 
 [provider]
-# Any OpenAI-compatible API endpoint
-endpoint = "https://api.anthropic.com/v1"
-# Environment variable name that holds your API key (never put the key here)
-api_key_env = "SPAI_API_KEY"
-# Model name — set to whichever model your provider offers
-model = "claude-sonnet-4-6"
+# LiteLLM proxy — handles priority routing: Claude → GPT-4o-mini → local Ollama
+# The proxy is started by the litellm-proxy.service systemd unit (installer sets this up)
+# See ~/.config/spaish/litellm.yaml for the full routing config
+endpoint = "http://localhost:4000"
+# Matches general_settings.master_key in litellm.yaml — do not change
+api_key_env = "LITELLM_MASTER_KEY"
+# Primary model group — litellm routes to Claude and falls back automatically
+model = "claude"
 
 [local]
 # Ollama endpoint (used when no API key is set, or prefer_local = true)

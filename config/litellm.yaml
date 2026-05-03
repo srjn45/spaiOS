@@ -1,0 +1,32 @@
+# spaiSH — LiteLLM proxy config
+# Priority routing: Claude → GPT-4o-mini → local Ollama
+# Install: uv tool install litellm
+# Start:   litellm --config ~/.config/spaish/litellm.yaml --port 4000
+#
+# Keys are read from environment variables set in ~/.config/spaish/api-keys
+# (loaded automatically by the litellm-proxy.service unit)
+
+model_list:
+  - model_name: claude
+    litellm_params:
+      model: claude-3-5-haiku-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: gpt4o-mini
+    litellm_params:
+      model: gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: ollama-local
+    litellm_params:
+      model: ollama/qwen2.5-coder
+      api_base: http://localhost:11434
+
+router_settings:
+  num_retries: 2
+  fallbacks:
+    - "claude": ["gpt4o-mini", "ollama-local"]
+    - "gpt4o-mini": ["ollama-local"]
+
+general_settings:
+  master_key: spai-local
