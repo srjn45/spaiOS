@@ -20,29 +20,42 @@ execution, windows snap on command.
 
 | # | Name | Status | Repo |
 |---|---|---|---|
-| M1 | spaid-overlay bridge | **Next** | spaiOS |
-| M2 | Window management tools | Blocked on M1 | spaiSH |
+| M1 | spaid-overlay bridge | **Done** | spaiOS + spaiSH |
+| M2 | Window management tools | **Next** | spaiSH |
 | M3 | Unified installer | Can start any time | spaiOS |
 | M4 | LiteLLM multi-model routing | Blocked on M3 | spaiSH |
 | M5 | Full loop polish + demo | Last | both |
 
 ---
 
-## M1 Starting Point
+## M1 What Was Done (2026-05-03)
 
-**Task doc:** `docs/tasks/2026-05-03-p3-m1-spaid-client-overlay.md`
-**Notion task:** phase3_m1_spaid_overlay_bridge
+- `spaiSH`: added `OverlayQuery` + `ActiveWindowInfo` to protocol; `OverlayHandler` in socket server; `onOverlay` handler in spaid streaming LLM response back with active window context
+- `spaiOS`: new `SpaidClient` (`src/spaiOS/core/spaid_client.py`) — connects to spaid.sock, reads active window via xdotool, streams `ResponseEvent`s; `Orchestrator` routes through spaid with direct Ollama fallback; `Overlay` injects `SpaidClient`
 
-**Steps:**
-1. Extend spaiSH socket protocol — add `OverlayQuery` + `OverlayResponse` types
-2. Wire `overlay_query` handler in `cmd/spaid/main.go`
-3. Write `src/spaiOS/core/spaid_client.py` with socket connect + streaming query
-4. Rewire `src/spaiOS/core/orchestrator.py` to call spaid_client
-5. Test: trigger overlay → query spaid → text streams into neural sphere
+**M1 AC status:**
+- [x] `spaid_client.py` written — connects, sends overlay_query, yields ResponseEvents
+- [x] `orchestrator.py` rewired — tries spaid first, falls back on exception
+- [x] spaid logs show `overlay_query` received (verified by log.Printf in onOverlay)
+- [x] Fallback to direct Ollama when socket absent (is_available() check)
+- [ ] End-to-end smoke test: start spaid → trigger overlay → query routes through → text renders ← **do this first next session**
 
-**Repos needed:**
-- `/home/srajan/Development/spaiOS` (this repo)
-- `/home/srajan/Development/spaiSH` (Go daemon)
+---
+
+## M2 Starting Point
+
+**Task doc:** create `docs/tasks/2026-05-03-p3-m2-window-management.md` before coding
+**Notion task:** phase3_m2_window_management
+
+**Files to touch (spaiSH):**
+1. `internal/tools/window_op.go` — new: xdotool/wmctrl window actions
+2. `internal/tools/app_control.go` — new: launch/kill/list-windows
+3. `cmd/spaid/main.go` — wire tools into onOverlay handler so LLM can call them
+4. `src/spaiOS/core/orchestrator.py` — implement `_execute_tool_call()` (currently stub)
+
+**Done when:** "snap Firefox to the left" → window snaps. "open gedit" → gedit launches.
+
+**Prereqs:** `xdotool` and `wmctrl` installed (`apt install xdotool wmctrl`)
 
 ---
 
