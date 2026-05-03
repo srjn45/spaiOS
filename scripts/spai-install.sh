@@ -37,6 +37,17 @@ check_deps() {
     fi
 }
 
+install_litellm() {
+    if command -v litellm &>/dev/null; then
+        echo "  → litellm already installed at $(command -v litellm)"
+    else
+        echo "Installing litellm..."
+        uv tool install litellm --quiet
+        echo "  → litellm installed"
+    fi
+    LITELLM_BIN="$(command -v litellm)"
+}
+
 check_source_dirs() {
     [[ -d "$SPAISH_DIR" ]] || die "spaiSH source not found at $SPAISH_DIR (set \$SPAISH_DIR to override)"
     [[ -d "$SPAIOS_DIR" ]] || die "spaiOS source not found at $SPAIOS_DIR (set \$SPAIOS_DIR to override)"
@@ -73,19 +84,61 @@ do_install() {
     echo "Installing config..."
     if [[ ! -f "$CONFIG_DIR/spaid.toml" ]]; then
         cp "$SPAISH_DIR/config/spaid.toml" "$CONFIG_DIR/spaid.toml"
-        echo "  → Config written to $CONFIG_DIR/spaid.toml — edit to set your API key/model"
+        echo "  → Config written to $CONFIG_DIR/spaid.toml"
     else
         echo "  → Config already at $CONFIG_DIR/spaid.toml — not overwriting"
     fi
 
-    echo "Installing systemd user service..."
-    cat > "$SYSTEMD_DIR/spaid.service" <<EOF
+    if [[ ! -f "$CONFIG_DIR/litellm.yaml" ]]; then
+        cp "$SPAISH_DIR/config/litellm.yaml" "$CONFIG_DIR/litellm.yaml"
+        echo "  → LiteLLM config written to $CONFIG_DIR/litellm.yaml"
+    else
+        echo "  → LiteLLM config already at $CONFIG_DIR/litellm.yaml — not overwriting"
+    fi
+
+    if [[ ! -f "$CONFIG_DIR/api-keys" ]]; then
+        cat > "$CONFIG_DIR/api-keys" <<'EOF'
+# API keys for LiteLLM proxy
+# Uncomment and fill in the keys you have — litellm falls back automatically
+# ANTHROPIC_API_KEY=your-key-here
+# OPENAI_API_KEY=your-key-here
+EOF
+        echo "  → API keys template written to $CONFIG_DIR/api-keys — add your keys there"
+    else
+        echo "  → API keys file already at $CONFIG_DIR/api-keys — not overwriting"
+    fi
+
+    echo "Installing litellm proxy..."
+    install_litellm
+
+    echo "Installing systemd user services..."
+    cat > "$SYSTEMD_DIR/litellm-proxy.service" <<EOF
 [Unit]
-Description=spaiSH daemon
+Description=LiteLLM proxy for spaiSH
 After=network.target
 
 [Service]
 Type=simple
+EnvironmentFile=-$CONFIG_DIR/api-keys
+Environment=LITELLM_MASTER_KEY=spai-local
+ExecStart=$LITELLM_BIN --config $CONFIG_DIR/litellm.yaml --port 4000
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
+EOF
+
+    cat > "$SYSTEMD_DIR/spaid.service" <<EOF
+[Unit]
+Description=spaiSH daemon
+After=litellm-proxy.service
+
+[Service]
+Type=simple
+Environment=LITELLM_MASTER_KEY=spai-local
 ExecStart=$INSTALL_DIR/spaid
 Restart=on-failure
 RestartSec=5
@@ -96,8 +149,9 @@ StandardError=journal
 WantedBy=default.target
 EOF
     systemctl --user daemon-reload
+    systemctl --user enable --now litellm-proxy
     systemctl --user enable --now spaid
-    echo "  → spaid service enabled and started"
+    echo "  → litellm-proxy and spaid services enabled and started"
 
     echo "Installing spaiOS autostart entry..."
     cat > "$AUTOSTART_DIR/spaios.desktop" <<EOF
@@ -119,25 +173,28 @@ EOF
     echo "spaiOS ready. Press Super+Space or say your wake word."
     echo ""
     echo "Next steps:"
-    echo "  • Edit $CONFIG_DIR/spaid.toml — set your API endpoint and model"
-    echo "  • Set your API key: export SPAI_API_KEY='your-key'  (add to ~/.bashrc)"
-    echo "  • Check service:   systemctl --user status spaid"
+    echo "  • Add API keys:    $CONFIG_DIR/api-keys  (uncomment lines for keys you have)"
+    echo "    Priority:  Claude (ANTHROPIC_API_KEY) → GPT-4o-mini (OPENAI_API_KEY) → local Ollama"
+    echo "  • Reload LiteLLM:  systemctl --user restart litellm-proxy  (after editing api-keys)"
+    echo "  • Check services:  systemctl --user status litellm-proxy spaid"
     echo "  • Start overlay:   $SPAIOS_DIR/.venv/bin/spaiOS"
 }
 
 # ── uninstall ─────────────────────────────────────────────────────────────────
 
 do_uninstall() {
-    echo "Stopping and disabling spaid service..."
-    if systemctl --user is-active --quiet spaid 2>/dev/null; then
-        systemctl --user stop spaid
-    fi
-    if systemctl --user is-enabled --quiet spaid 2>/dev/null; then
-        systemctl --user disable spaid
-    fi
-    rm -f "$SYSTEMD_DIR/spaid.service"
+    echo "Stopping and disabling services..."
+    for svc in spaid litellm-proxy; do
+        if systemctl --user is-active --quiet "$svc" 2>/dev/null; then
+            systemctl --user stop "$svc"
+        fi
+        if systemctl --user is-enabled --quiet "$svc" 2>/dev/null; then
+            systemctl --user disable "$svc"
+        fi
+        rm -f "$SYSTEMD_DIR/$svc.service"
+    done
     systemctl --user daemon-reload 2>/dev/null || true
-    echo "  → spaid service removed"
+    echo "  → spaid and litellm-proxy services removed"
 
     echo "Removing binaries..."
     rm -f "$INSTALL_DIR/spai" "$INSTALL_DIR/spaid" "$INSTALL_DIR/spaish"

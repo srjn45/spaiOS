@@ -23,8 +23,8 @@ execution, windows snap on command.
 | M1 | spaid-overlay bridge | **Done** | spaiOS + spaiSH |
 | M2 | Window management tools | **Done** | spaiSH |
 | M3 | Unified installer | **Done** | spaiOS |
-| M4 | LiteLLM multi-model routing | **Next** | spaiSH |
-| M5 | Full loop polish + demo | Last | both |
+| M4 | LiteLLM multi-model routing | **Done** | spaiSH |
+| M5 | Full loop polish + demo | **Next** | both |
 
 ---
 
@@ -81,6 +81,27 @@ execution, windows snap on command.
 - [x] `reinstall` = uninstall + install
 - [x] missing dep prints helpful error
 - [x] full cycle: 4s (< 2 min)
+
+---
+
+---
+
+## M4 What Was Done (2026-05-03)
+
+- `config/litellm.yaml` (spaiSH) — LiteLLM proxy config: Claude → GPT-4o-mini → local Ollama, with `fallbacks` chaining and `master_key: spai-local`
+- `config/spaid.toml` (spaiSH) — `[provider]` now points at `http://localhost:4000`, `api_key_env = "LITELLM_MASTER_KEY"`, `model = "claude"`
+- `scripts/spai-install.sh` (spaiOS) — installs litellm via `uv tool install litellm`, writes `litellm-proxy.service` and `api-keys` template, updates `spaid.service` with `LITELLM_MASTER_KEY=spai-local`
+
+**M4 AC status:**
+- [x] `config/litellm.yaml` written — priority routing + fallbacks configured
+- [x] `spaid.toml` updated — points at litellm proxy
+- [x] Installer installs litellm and registers `litellm-proxy.service`
+- [x] `api-keys` template at `~/.config/spaish/api-keys` for user-managed keys
+- [ ] Live test: ANTHROPIC_API_KEY set → queries route to Claude ← **verify after `./scripts/spai-install.sh reinstall`**
+- [ ] Live test: no API keys → falls back to local Ollama
+- [ ] Live test: kill network mid-session → Ollama fallback kicks in
+
+**Prereq to test:** `./scripts/spai-install.sh reinstall` (installs litellm, writes services)
 
 ---
 
