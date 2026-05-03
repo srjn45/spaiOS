@@ -6,6 +6,18 @@
 
 ---
 
+## ⚠ Direction Update (2026-05-03)
+
+**Phase 3 has pivoted.** The custom Wayland compositor (original Phase 3) is parked. The new Phase 3 builds an AI assistant layer that works on top of any existing X11 Linux desktop by connecting the spaiOS overlay to the spaiSH daemon.
+
+**Read first for current direction:**
+- New Phase 3: `docs/phases/2026-05-03-phase-3-the-assistant-layer.md`
+- Pivot design spec: `docs/superpowers/specs/2026-05-03-pivot-ai-assistant-design.md`
+
+The original architecture and long-term vision below remain valid for Phase 4+.
+
+---
+
 ## Quick Context (Read First — New Claude Session)
 
 - **Project:** spaiOS — AI-native OS. Not yet an OS; currently in Phase 1 (Python overlay).

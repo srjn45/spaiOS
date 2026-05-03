@@ -1,12 +1,13 @@
 use smithay::{
+    backend::renderer::utils::on_commit_buffer_handler,
     delegate_compositor, delegate_output, delegate_seat, delegate_shm, delegate_xdg_shell,
-    input::{Seat, SeatHandler, SeatState},
+    input::{keyboard::XkbConfig, Seat, SeatHandler, SeatState},
     reexports::wayland_server::{
         backend::{ClientData, ClientId, DisconnectReason},
         protocol::{wl_buffer, wl_seat, wl_surface::WlSurface},
-        Display, DisplayHandle, Resource,
+        Display, DisplayHandle,
     },
-    utils::Serial,
+    utils::{Serial, SERIAL_COUNTER},
     wayland::{
         buffer::BufferHandler,
         compositor::{CompositorClientState, CompositorHandler, CompositorState},
@@ -24,7 +25,9 @@ pub struct SpaiState {
     pub xdg_shell_state: XdgShellState,
     pub shm_state: ShmState,
     pub seat_state: SeatState<Self>,
+    pub seat: Seat<Self>,
     pub output_manager_state: OutputManagerState,
+    pub toplevels: Vec<ToplevelSurface>,
 }
 
 pub struct CalloopData {
@@ -49,12 +52,19 @@ impl ClientData for ClientState {
 
 impl SpaiState {
     pub fn new(dh: &DisplayHandle) -> Self {
+        let mut seat_state = SeatState::new();
+        let mut seat = seat_state.new_wl_seat(dh, "seat0");
+        seat.add_keyboard(XkbConfig::default(), 200, 25)
+            .expect("failed to initialize keyboard");
+
         SpaiState {
             compositor_state: CompositorState::new::<Self>(dh),
             xdg_shell_state: XdgShellState::new::<Self>(dh),
             shm_state: ShmState::new::<Self>(dh, vec![]),
-            seat_state: SeatState::new(),
+            seat_state,
+            seat,
             output_manager_state: OutputManagerState::new_with_xdg_output::<Self>(dh),
+            toplevels: Vec::new(),
         }
     }
 }
@@ -80,7 +90,15 @@ impl CompositorHandler for SpaiState {
     }
 
     fn commit(&mut self, surface: &WlSurface) {
-        info!("surface committed: {:?}", surface.id());
+        on_commit_buffer_handler::<Self>(surface);
+        self.toplevels.retain(|t| t.alive());
+        // Give keyboard focus when the toplevel surface is actually committed with a buffer
+        if self.toplevels.iter().any(|t| t.wl_surface() == surface) {
+            info!("toplevel committed — setting keyboard focus");
+            if let Some(keyboard) = self.seat.get_keyboard() {
+                keyboard.set_focus(self, Some(surface.clone()), SERIAL_COUNTER.next_serial());
+            }
+        }
     }
 }
 
@@ -129,6 +147,7 @@ impl XdgShellHandler for SpaiState {
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         info!("new toplevel window");
         surface.send_configure();
+        self.toplevels.push(surface);
     }
 
     fn new_popup(&mut self, _surface: PopupSurface, _positioner: PositionerState) {}

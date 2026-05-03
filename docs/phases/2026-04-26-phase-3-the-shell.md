@@ -1,6 +1,11 @@
-# Phase 3: The Shell
+# Phase 3: The Shell (SUPERSEDED)
 
-**Status:** Not started — begins after Phase 2 acceptance criteria pass
+**Status:** PARKED — superseded by `2026-05-03-phase-3-the-assistant-layer.md`
+**Reason:** Custom Wayland compositor estimated at months of work before delivering user value. Pivoted to building AI assistant layer on top of existing X11 desktops using spaiOS + spaiSH. Compositor work may resume in a future phase once the assistant layer is proven.
+
+---
+
+<!-- Original content preserved below for reference -->
 **Target:** Month 4–8 (~45–60 sessions × 2hrs)
 **Output:** Bootable Alpine Linux ISO with Neural Sphere as the complete desktop shell
 

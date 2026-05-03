@@ -5,33 +5,51 @@ Update it at the end of every session before committing.
 
 ---
 
-## Current: Phase 3 — Milestone 1 (Compositor Foundation)
+## Current: Phase 3 — The Assistant Layer (PIVOTED 2026-05-03)
 
-**Goal:** Bootstrap the Rust Wayland compositor. Get Smithay's `smallvil` example running, understand
-it fully, then scaffold the spaiOS compositor crate.
+**Goal:** Connect spaiOS overlay to spaid daemon. Replace direct Ollama calls with spaid socket
+protocol. End state: voice/hotkey triggers the overlay, spaid handles LLM routing and tool
+execution, windows snap on command.
 
-**Notion task:** phase3_m1_compositor_foundation
-
-**Done (Phase 2 complete — M7 smoke-test notes):**
-- AC9 passed. AC10/AC11 deferred: root causes found, fixes applied (see
-  docs/tasks/2026-05-02-session23-m7-smoke-test.md). Re-test when convenient.
-
-**Done (Session 24):**
-- `compositor/` crate created with Smithay 0.7, calloop 0.14, wayland-server 0.31
-- `SpaiState` wires CompositorHandler + ShmHandler + SeatHandler + XdgShellHandler
-- `ListeningSocket` on `WAYLAND_DISPLAY=wayland-spai`; calloop event loop running
-- `cargo build` passes cleanly
-
-**Steps (remaining for M1):**
-1. Run `cargo run` in compositor/ and test: `WAYLAND_DISPLAY=wayland-spai weston-terminal`
-2. Add `OutputManagerState` + a virtual output so clients configure correctly
-3. Add `wl_seat` with keyboard — so `weston-terminal` can receive input
-4. Add Winit backend window (render client surfaces into a host window for dev testing)
-5. Milestone done when: `weston-terminal` opens inside the compositor window and accepts text
+**Full design:** `docs/superpowers/specs/2026-05-03-pivot-ai-assistant-design.md`
+**Phase doc:** `docs/phases/2026-05-03-phase-3-the-assistant-layer.md`
 
 ---
 
-## How to update this file
+## Milestone Order
 
-At the end of each session, replace the "Current" block with the next milestone/session goal.
-Format: milestone name, session number, ordered steps, Notion task link.
+| # | Name | Status | Repo |
+|---|---|---|---|
+| M1 | spaid-overlay bridge | **Next** | spaiOS |
+| M2 | Window management tools | Blocked on M1 | spaiSH |
+| M3 | Unified installer | Can start any time | spaiOS |
+| M4 | LiteLLM multi-model routing | Blocked on M3 | spaiSH |
+| M5 | Full loop polish + demo | Last | both |
+
+---
+
+## M1 Starting Point
+
+**Task doc:** `docs/tasks/2026-05-03-p3-m1-spaid-client-overlay.md`
+**Notion task:** phase3_m1_spaid_overlay_bridge
+
+**Steps:**
+1. Extend spaiSH socket protocol — add `OverlayQuery` + `OverlayResponse` types
+2. Wire `overlay_query` handler in `cmd/spaid/main.go`
+3. Write `src/spaiOS/core/spaid_client.py` with socket connect + streaming query
+4. Rewire `src/spaiOS/core/orchestrator.py` to call spaid_client
+5. Test: trigger overlay → query spaid → text streams into neural sphere
+
+**Repos needed:**
+- `/home/srajan/Development/spaiOS` (this repo)
+- `/home/srajan/Development/spaiSH` (Go daemon)
+
+---
+
+## What Was Just Parked
+
+Phase 3 Wayland compositor (`compositor/` crate in Rust/Smithay) is parked — not deleted.
+It successfully renders a window and composites client surfaces (weston-terminal visible),
+but keyboard input was not yet working and the full compositor was months away from user value.
+
+AC status: surface rendering ✓, correct orientation ✓, keyboard typing ✗ (parked mid-debug)
