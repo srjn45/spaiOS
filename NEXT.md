@@ -21,8 +21,8 @@ execution, windows snap on command.
 | # | Name | Status | Repo |
 |---|---|---|---|
 | M1 | spaid-overlay bridge | **Done** | spaiOS + spaiSH |
-| M2 | Window management tools | **Next** | spaiSH |
-| M3 | Unified installer | Can start any time | spaiOS |
+| M2 | Window management tools | **Done** | spaiSH |
+| M3 | Unified installer | **Next** | spaiOS |
 | M4 | LiteLLM multi-model routing | Blocked on M3 | spaiSH |
 | M5 | Full loop polish + demo | Last | both |
 
@@ -42,20 +42,24 @@ execution, windows snap on command.
 
 ---
 
-## M2 Starting Point
+## M2 What Was Done (2026-05-03)
 
-**Task doc:** create `docs/tasks/2026-05-03-p3-m2-window-management.md` before coding
-**Notion task:** phase3_m2_window_management
+- `internal/tools/window_op.go` — SnapLeft, SnapRight, MaximizeWindow, CloseWindow, GetActiveWinIDHex, ScreenGeometry
+- `internal/tools/app_control.go` — LaunchApp (detached, new session), ListWindows
+- `cmd/spaid/main.go` — overlaySystemPrompt updated with TOOL_CALL format; `executeWindowTool()` dispatcher; `onOverlay` now buffers full response, parses TOOL_CALL lines, executes tools, streams text back
+- `src/spaiOS/core/orchestrator.py` — `_execute_tool_call` comment updated (tools run in spaid, not spaiOS)
 
-**Files to touch (spaiSH):**
-1. `internal/tools/window_op.go` — new: xdotool/wmctrl window actions
-2. `internal/tools/app_control.go` — new: launch/kill/list-windows
-3. `cmd/spaid/main.go` — wire tools into onOverlay handler so LLM can call them
-4. `src/spaiOS/core/orchestrator.py` — implement `_execute_tool_call()` (currently stub)
+**Design:** LLM outputs `TOOL_CALL: {"tool":"snap_window","side":"left"}` lines; spaid parses, executes via xdotool/wmctrl, strips from user-visible text.  
+**Prereq to test:** `sudo apt install wmctrl` (xdotool already present)
 
-**Done when:** "snap Firefox to the left" → window snaps. "open gedit" → gedit launches.
-
-**Prereqs:** `xdotool` and `wmctrl` installed (`apt install xdotool wmctrl`)
+**M2 AC status:**
+- [x] `internal/tools/window_op.go` written — SnapLeft/Right, Maximize, Close
+- [x] `internal/tools/app_control.go` written — LaunchApp, ListWindows
+- [x] `onOverlay` parses TOOL_CALL: lines and dispatches to tools package
+- [x] `go build ./...` passes cleanly
+- [ ] Live test: "snap Firefox to the left" → window snaps ← **verify after `apt install wmctrl`**
+- [ ] Live test: "open gedit" → gedit launches
+- [ ] M1 smoke test: spaid receives overlay_query, text renders in overlay ← **still pending**
 
 ---
 

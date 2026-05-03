@@ -625,8 +625,9 @@ class Orchestrator:
         return reply
 
     def _execute_tool_call(self, event: ResponseEvent) -> None:
-        # M1 stub — xdotool/wmctrl execution added in M2
-        log.info("tool_call (stub): tool=%s params=%s", event.tool, event.params)
+        # Window tools are executed by spaid (Go side) before the response reaches spaiOS.
+        # This method handles any future tool_call events for overlay-only capabilities.
+        log.info("tool_call received (not expected in M2): tool=%s params=%s", event.tool, event.params)
 
     def _ask_direct(self, prompt: str) -> str:
         ctx_data = ctx.capture()
