@@ -105,7 +105,8 @@ func executeWindowTool(jsonStr string, activeWinID string) string {
 		Side string `json:"side,omitempty"`
 		App  string `json:"app,omitempty"`
 	}
-	if err := json.Unmarshal([]byte(jsonStr), &call); err != nil {
+	// Use Decoder so trailing LLM commentary after the JSON object is ignored.
+	if err := json.NewDecoder(strings.NewReader(jsonStr)).Decode(&call); err != nil {
 		return fmt.Sprintf("parse error: %v", err)
 	}
 
