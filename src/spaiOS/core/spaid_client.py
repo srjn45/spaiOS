@@ -25,9 +25,14 @@ class ResponseEvent:
 class SpaidClient:
     def __init__(self, sock_path: str = _SOCK_PATH) -> None:
         self._sock_path = sock_path
+        self._captured_window: dict = {}
 
     def is_available(self) -> bool:
         return os.path.exists(self._sock_path)
+
+    def capture_active_window(self) -> None:
+        """Call before the overlay steals focus so subsequent queries target the right window."""
+        self._captured_window = self.get_active_window()
 
     def get_active_window(self) -> dict:
         try:

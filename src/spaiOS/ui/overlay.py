@@ -130,6 +130,9 @@ class Overlay(QMainWindow):
             self._idle_timer.stop()
             self.hide()
         else:
+            # Snapshot the focused window before we steal focus.
+            if self._orchestrator._spaid_client is not None:
+                self._orchestrator._spaid_client.capture_active_window()
             super().show()
             self._start_fade_in()
             self.raise_()

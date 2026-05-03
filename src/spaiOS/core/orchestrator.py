@@ -611,7 +611,7 @@ class Orchestrator:
         return self._ask_direct(prompt)
 
     def _ask_via_spaid(self, prompt: str) -> str:
-        active_window = self._spaid_client.get_active_window()
+        active_window = self._spaid_client._captured_window or self._spaid_client.get_active_window()
         text_parts: list[str] = []
         for event in self._spaid_client.query(prompt, active_window):
             if event.type == "text":
