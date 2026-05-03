@@ -1,9 +1,9 @@
 package protocol
 
 // Request is sent from spai → spaid over the Unix socket.
-// Types: "query" | "execute" | "llm" | "agent" | "session" | "shell" | "confirm_response"
+// Types: "query" | "execute" | "llm" | "agent" | "session" | "shell" | "overlay_query" | "confirm_response"
 type Request struct {
-	Type            string           `json:"type"`                       // "query" | "execute" | "llm" | "agent" | "session" | "shell" | "confirm_response"
+	Type            string           `json:"type"`                       // "query" | "execute" | "llm" | "agent" | "session" | "shell" | "overlay_query" | "confirm_response"
 	Query           string           `json:"query,omitempty"`            // the user's natural language query
 	WorkingDir      string           `json:"working_dir"`                // current directory from spai
 	GitBranch       string           `json:"git_branch,omitempty"`       // current git branch, if any
@@ -17,13 +17,31 @@ type Request struct {
 	Stdin           string           `json:"stdin,omitempty"`            // content from piped stdin
 	Session         *SessionRequest  `json:"session,omitempty"`          // for "session" request type
 	Shell           *ShellEvent      `json:"shell,omitempty"`            // for "shell" request type
+	Overlay         *OverlayQuery    `json:"overlay,omitempty"`          // for "overlay_query" request type
 }
 
 // Response is streamed from spaid → spai as newline-delimited JSON.
 type Response struct {
-	Type    string        `json:"type"`              // "text" | "plan" | "output" | "done" | "error"
-	Content string        `json:"content,omitempty"` // for "text", "output", "error"
-	Plan    []CommandItem `json:"plan,omitempty"`    // for "plan"
+	Type    string                 `json:"type"`              // "text" | "tool_call" | "plan" | "output" | "done" | "error"
+	Content string                 `json:"content,omitempty"` // for "text", "output", "error"
+	Plan    []CommandItem          `json:"plan,omitempty"`    // for "plan"
+	Tool    string                 `json:"tool,omitempty"`    // for "tool_call": tool name
+	Params  map[string]interface{} `json:"params,omitempty"`  // for "tool_call": tool parameters
+}
+
+// OverlayQuery is the payload for "overlay_query" request type.
+// Sent by spaiOS when the user activates the overlay and submits a query.
+type OverlayQuery struct {
+	Query        string           `json:"query"`
+	SessionID    string           `json:"session_id,omitempty"`
+	ActiveWindow *ActiveWindowInfo `json:"active_window,omitempty"`
+}
+
+// ActiveWindowInfo carries context about the currently focused window.
+type ActiveWindowInfo struct {
+	Title string `json:"title"`
+	WinID string `json:"win_id"`
+	PID   int    `json:"pid"`
 }
 
 // CommandItem is a single proposed command with its permission classification.

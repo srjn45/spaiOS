@@ -57,6 +57,11 @@ Be concise — one short paragraph maximum.
 When suggesting a specific command, wrap it in backticks.
 Do not use markdown code blocks — plain text only.`
 
+const overlaySystemPrompt = `You are spaiOS, an AI assistant running as a desktop overlay on the user's Linux desktop.
+Be concise — 1-2 sentences unless the user asks for more detail.
+When you act on a window or launch an app, confirm it briefly.
+Plain text only, no markdown.`
+
 func shellUserMessage(ev *protocol.ShellEvent) string {
 	switch ev.Trigger {
 	case "error":
@@ -79,6 +84,17 @@ func shellUserMessage(ev *protocol.ShellEvent) string {
 		return fmt.Sprintf("Command: %s\nOutput: %s\nExit code: %d\n\nWhat went wrong and how do I fix it?",
 			ev.Command, ev.Output, ev.ExitCode)
 	}
+}
+
+func buildOverlayMessages(q *protocol.OverlayQuery, sess *session.Session) []ai.Message {
+	sysMsg := overlaySystemPrompt
+	if q.ActiveWindow != nil && q.ActiveWindow.Title != "" {
+		sysMsg += fmt.Sprintf("\n\nActive window: %s (win_id: %s)", q.ActiveWindow.Title, q.ActiveWindow.WinID)
+	}
+	msgs := []ai.Message{{Role: "system", Content: sysMsg}}
+	msgs = append(msgs, sess.MessagesForPrompt()...)
+	msgs = append(msgs, ai.Message{Role: "user", Content: q.Query})
+	return msgs
 }
 
 func buildShellMessages(ev *protocol.ShellEvent, sess *session.Session) []ai.Message {
@@ -400,7 +416,51 @@ func main() {
 		go sess.AppendHistory(time.Now().UTC(), userMsg, aiReply, "")
 	}
 
-	if err := socket.Serve(sock, onQuery, onExec, onLLM, onAgent, onSession, onShell); err != nil {
+	onOverlay := func(req *protocol.Request, enc *json.Encoder) {
+		if req.Overlay == nil {
+			enc.Encode(protocol.Response{Type: "error", Content: "missing overlay payload"})
+			enc.Encode(protocol.Response{Type: "done"})
+			return
+		}
+		q := req.Overlay
+		winTitle := "(none)"
+		if q.ActiveWindow != nil {
+			winTitle = q.ActiveWindow.Title
+		}
+		log.Printf("overlay_query: session=%s query=%q win=%s", req.SessionID, q.Query, winTitle)
+
+		sess := loadSession(req.SessionID)
+		provider, err := rtr.SelectProvider(req.ForceLocal)
+		if err != nil {
+			enc.Encode(protocol.Response{Type: "error", Content: err.Error()})
+			enc.Encode(protocol.Response{Type: "done"})
+			return
+		}
+
+		msgs := buildOverlayMessages(q, sess)
+		textCh, err := provider.Complete(context.Background(), msgs)
+		if err != nil {
+			enc.Encode(protocol.Response{Type: "error", Content: err.Error()})
+			enc.Encode(protocol.Response{Type: "done"})
+			return
+		}
+
+		var fullText strings.Builder
+		for chunk := range textCh {
+			fullText.WriteString(chunk)
+			enc.Encode(protocol.Response{Type: "text", Content: chunk})
+		}
+		enc.Encode(protocol.Response{Type: "done"})
+
+		reply := fullText.String()
+		sess.AddExchange(q.Query, reply)
+		if err := sess.SaveCache(); err != nil {
+			log.Printf("session save error: %v", err)
+		}
+		go sess.AppendHistory(time.Now().UTC(), q.Query, reply, "")
+	}
+
+	if err := socket.Serve(sock, onQuery, onExec, onLLM, onAgent, onSession, onShell, onOverlay); err != nil {
 		log.Fatalf("socket error: %v", err)
 	}
 }

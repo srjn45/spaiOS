@@ -28,9 +28,12 @@ type SessionHandler func(req *protocol.Request, enc *json.Encoder)
 // ShellHandler processes a shell event request and writes Response chunks to enc.
 type ShellHandler func(req *protocol.Request, enc *json.Encoder)
 
+// OverlayHandler processes an overlay_query request from the spaiOS overlay.
+type OverlayHandler func(req *protocol.Request, enc *json.Encoder)
+
 // Serve starts a Unix domain socket server at sockPath.
 // Blocks until the listener is closed or an unrecoverable error occurs.
-func Serve(sockPath string, onQuery QueryHandler, onExec ExecHandler, onLLM LLMHandler, onAgent AgentHandler, onSession SessionHandler, onShell ShellHandler) error {
+func Serve(sockPath string, onQuery QueryHandler, onExec ExecHandler, onLLM LLMHandler, onAgent AgentHandler, onSession SessionHandler, onShell ShellHandler, onOverlay OverlayHandler) error {
 	os.Remove(sockPath)
 	os.MkdirAll(sockPath[:len(sockPath)-len("/spaid.sock")], 0700)
 
@@ -45,11 +48,11 @@ func Serve(sockPath string, onQuery QueryHandler, onExec ExecHandler, onLLM LLMH
 		if err != nil {
 			return nil
 		}
-		go handleConn(conn, onQuery, onExec, onLLM, onAgent, onSession, onShell)
+		go handleConn(conn, onQuery, onExec, onLLM, onAgent, onSession, onShell, onOverlay)
 	}
 }
 
-func handleConn(conn net.Conn, onQuery QueryHandler, onExec ExecHandler, onLLM LLMHandler, onAgent AgentHandler, onSession SessionHandler, onShell ShellHandler) {
+func handleConn(conn net.Conn, onQuery QueryHandler, onExec ExecHandler, onLLM LLMHandler, onAgent AgentHandler, onSession SessionHandler, onShell ShellHandler, onOverlay OverlayHandler) {
 	defer conn.Close()
 
 	dec := json.NewDecoder(conn)
@@ -73,6 +76,8 @@ func handleConn(conn net.Conn, onQuery QueryHandler, onExec ExecHandler, onLLM L
 		onSession(&req, enc)
 	case "shell":
 		onShell(&req, enc)
+	case "overlay_query":
+		onOverlay(&req, enc)
 	default:
 		enc.Encode(protocol.Response{Type: "error", Content: "unknown request type: " + req.Type})
 	}
